@@ -15,6 +15,7 @@ export function buildAuditReport(application: any) {
     new Paragraph(`NIB: ${application.nib || '-'}`),
     new Paragraph(`STTD: ${application.sttd || '-'}`),
     new Paragraph(`Tanggal Audit: ${application.auditDate ? new Date(application.auditDate).toLocaleDateString('id-ID') : '-'}`),
+    new Paragraph(`Auditor: ${application.assignments?.map((a: any) => `${a.auditorName || a.auditor?.name || '-'}${a.auditorTitle ? `, ${a.auditorTitle}` : ''}`).join('; ') || '-'}`),
     new Paragraph(`Jenis Pendaftaran: ${application.registrationType || '-'}`),
     new Paragraph(`Kelompok Produk: ${application.productGroup || '-'}`),
     new Paragraph({ spacing: { before: 500 }, children: [new TextRun({ text: 'DAFTAR PRODUK', bold: true, size: 24 })] }),

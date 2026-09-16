@@ -71,6 +71,8 @@ model AuditAssignment {
   assignedAt   DateTime  @default(now())
   startedAt    DateTime?
   completedAt  DateTime?
+  auditorName  String?
+  auditorTitle String?
   notes        String?
   @@unique([pengajuanId, auditorId])
   @@index([auditorId])

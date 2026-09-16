@@ -18,6 +18,10 @@ export async function changeApplicationStatus(applicationId: string, nextStatus:
     const allowed = transitions[application.status] ?? [];
     if (!allowed.includes(nextStatus)) throw new Error('INVALID_TRANSITION');
     if (nextStatus === 'SELESAI' && application.temuan.some((finding) => !['VERIFIED', 'CLOSED'].includes(finding.status))) throw new Error('OPEN_FINDINGS');
+    if (nextStatus === 'SELESAI') {
+      const assignment = await tx.auditAssignment.findFirst({ where: { pengajuanId: applicationId } });
+      if (!assignment?.auditorName?.trim()) throw new Error('AUDITOR_IDENTITY_REQUIRED');
+    }
     const updated = await tx.pengajuan.update({ where: { id: applicationId }, data: { status: nextStatus, ...(nextStatus === 'SEDANG_DIAUDIT' ? { auditDate: new Date() } : {}) } });
     await tx.auditLog.create({ data: { pengajuanId: applicationId, actorId, action: 'STATUS_CHANGED', description: `${application.status} → ${nextStatus}. ${description}` } });
     if (nextStatus === 'PERLU_PERBAIKAN') await tx.notification.create({ data: { userId: application.userId, pengajuanId: applicationId, title: 'Perbaikan diperlukan', message: description || 'Auditor meminta Anda memeriksa temuan pada pengajuan.' } });

@@ -40,6 +40,20 @@ export async function POST(req: Request) {
   }
 }
 
+export async function PATCH(req: Request) {
+  const user = await getCurrentUser();
+  if (!user || !['ADMIN', 'SUPER_ADMIN', 'AUDITOR'].includes(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const body = await req.json();
+  if (!body.assignmentId || !body.auditorName?.trim()) return NextResponse.json({ error: 'Nama auditor wajib diisi.' }, { status: 400 });
+  if (body.auditorName.trim().length > 120 || (body.auditorTitle && body.auditorTitle.trim().length > 120)) return NextResponse.json({ error: 'Nama atau gelar auditor terlalu panjang.' }, { status: 400 });
+  const assignment = await prisma.auditAssignment.findUnique({ where: { id: body.assignmentId }, include: { pengajuan: true } });
+  if (!assignment) return NextResponse.json({ error: 'Assignment tidak ditemukan.' }, { status: 404 });
+  if (user.role === 'AUDITOR' && assignment.auditorId !== user.id) return NextResponse.json({ error: 'Anda tidak memiliki assignment ini.' }, { status: 403 });
+  const updated = await prisma.auditAssignment.update({ where: { id: assignment.id }, data: { auditorName: body.auditorName.trim(), auditorTitle: body.auditorTitle?.trim() || null } });
+  await prisma.auditLog.create({ data: { pengajuanId: assignment.pengajuanId, actorId: user.id, action: 'AUDITOR_IDENTITY_UPDATED', description: `Identitas auditor diperbarui: ${updated.auditorName}${updated.auditorTitle ? `, ${updated.auditorTitle}` : ''}.` } });
+  return NextResponse.json(updated);
+}
+
 export async function GET(req: Request) {
   const user = await getCurrentUser();
   if (!user || !adminRoles.includes(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

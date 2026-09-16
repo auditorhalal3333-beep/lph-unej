@@ -35,5 +35,5 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user.role);
   const isOwnerSubmit = user.role === 'PENYELIA' && body.status === 'DIAJUKAN';
   if (!isAdmin && !isOwnerSubmit) return NextResponse.json({ error: 'Anda tidak dapat mengubah workflow pengajuan.' }, { status: 403 });
-  try { const updated = await changeApplicationStatus(id, body.status, user.id, body.description ?? ''); return NextResponse.json(updated); } catch (error) { const message = error instanceof Error && error.message === 'INVALID_TRANSITION' ? 'Perubahan status tidak diizinkan.' : 'Permintaan tidak dapat diproses.'; return NextResponse.json({ error: message }, { status: 400 }); }
+  try { const updated = await changeApplicationStatus(id, body.status, user.id, body.description ?? ''); return NextResponse.json(updated); } catch (error) { const message = error instanceof Error && error.message === 'INVALID_TRANSITION' ? 'Perubahan status tidak diizinkan.' : error instanceof Error && error.message === 'AUDITOR_IDENTITY_REQUIRED' ? 'Nama auditor wajib diisi sebelum audit diselesaikan.' : 'Permintaan tidak dapat diproses.'; return NextResponse.json({ error: message }, { status: 400 }); }
 }
