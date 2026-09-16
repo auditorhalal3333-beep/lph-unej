@@ -8,9 +8,6 @@ export default function Home() {
         <a href="/login" className="btn btn-primary btn-lg">Login</a>
         <a href="/register" className="btn btn-secondary btn-lg">Register Penyelia</a>
       </div>
-      <div className="text-sm text-gray-400 mt-8">
-        <p>Demo Admin: admin@example.com / password123</p>
-      </div>
     </div>
   );
 }
