@@ -1,68 +1,22 @@
 'use client';
-
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Check, ChevronRight, ClipboardCheck, FileArchive, FileText, Loader2, Save, ShieldCheck, UserRound, AlertCircle } from 'lucide-react';
 import { useParams } from 'next/navigation';
 
-export default function AuditPage() {
-  const params = useParams();
-  const [temuan, setTemuan] = useState<any[]>([]);
-  const [form, setForm] = useState({ section: '', description: '' });
-
-  const handleAddTemuan = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = await fetch('/api/temuan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pengajuanId: params.id, ...form }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setTemuan([...temuan, data]);
-      setForm({ section: '', description: '' });
-    }
-  };
-
-  const handleVerify = async (id: string) => {
-    await fetch(`/api/temuan/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'SELESAI' }),
-    });
-  };
-
-  return (
-    <div className="p-4 space-y-6">
-      <h1 className="text-2xl font-bold">Audit Pengajuan</h1>
-
-      <form onSubmit={handleAddTemuan} className="card bg-base-200 p-4 space-y-4">
-        <h2 className="text-lg font-bold">Tambah Temuan</h2>
-        <select value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })} className="select select-bordered w-full">
-          <option value="">Pilih Bagian</option>
-          <option value="KOMITMEN">Komitmen dan Tanggung Jawab</option>
-          <option value="BAHAN">Bahan</option>
-          <option value="PROSES">Proses Produk Halal</option>
-          <option value="PRODUK">Produk</option>
-          <option value="EVALUASI">Pemantauan dan Evaluasi</option>
-        </select>
-        <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Deskripsi temuan" className="textarea textarea-bordered w-full" required />
-        <button type="submit" className="btn btn-primary">Tambah Temuan</button>
-      </form>
-
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold">Daftar Temuan</h2>
-        {temuan.map((t: any, i: number) => (
-          <div key={i} className="card bg-base-200 p-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <div className="font-bold">{t.section}</div>
-                <div>{t.description}</div>
-                <div className="text-sm text-gray-500">Status: {t.status}</div>
-              </div>
-              <button onClick={() => handleVerify(t.id)} className="btn btn-sm btn-success">Verifikasi</button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+type Application = { id: string; auditNumber: string; companyName: string; factoryName: string; ownerName: string; address: string; nib?: string | null; sttd?: string | null; supervisor?: string | null; type: string; status: string; auditDate?: string | null; products: any[]; ingredients: any[]; sjphResponses: any[]; temuan: any[]; auditResults: any[]; evidences: any[]; auditLogs: any[]; assignments: any[] };
+const tabs = [{ key: 'overview', label: 'Overview', icon: ClipboardCheck }, { key: 'company', label: 'Perusahaan', icon: UserRound }, { key: 'products', label: 'Produk', icon: FileText }, { key: 'materials', label: 'Bahan', icon: ShieldCheck }, { key: 'sjph', label: 'SJPH', icon: ClipboardCheck }, { key: 'evidence', label: 'Evidence', icon: FileArchive }, { key: 'findings', label: 'Temuan', icon: AlertCircle }, { key: 'trail', label: 'Audit Trail', icon: FileText }];
+const resultOptions = [{ value: 'SESUAI', label: 'Sesuai', cls: 'text-[#08725b] bg-[#e7f5ef]' }, { value: 'PERLU_PERBAIKAN', label: 'Perlu Perbaikan', cls: 'text-[#a66a00] bg-[#fff4d7]' }, { value: 'TIDAK_SESUAI', label: 'Tidak Sesuai', cls: 'text-[#c54b39] bg-[#ffe6e2]' }, { value: 'TIDAK_BERLAKU', label: 'Tidak Berlaku', cls: 'text-[#647873] bg-[#edf2f1]' }];
+export default function AuditWorkspace() { const { id } = useParams<{ id: string }>(); const [app,setApp]=useState<Application|null>(null); const [tab,setTab]=useState('overview'); const [busy,setBusy]=useState(''); const [finding,setFinding]=useState({section:'',criterion:'',description:'',instruction:''}); const [note,setNote]=useState('');
+  async function load(){ const res=await fetch(`/api/pengajuan/${id}`); if(res.ok)setApp(await res.json()); } useEffect(()=>{load()},[id]);
+  async function startAudit(){setBusy('start'); await fetch(`/api/pengajuan/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'SEDANG_DIAUDIT',description:'Audit dimulai oleh auditor.'})}); await load(); setBusy('');}
+  async function saveResult(section:string,criterion:string,result:string){setBusy(criterion); const res=await fetch('/api/audit-results',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pengajuanId:id,section,criterion,result,note})}); if(res.ok){setNote('');await load()} else {const e=await res.json();alert(e.error)}setBusy('');}
+  async function addFinding(e:React.FormEvent){e.preventDefault();setBusy('finding');await fetch('/api/temuan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pengajuanId:id,...finding})});setFinding({section:'',criterion:'',description:'',instruction:''});await load();setBusy('');}
+  if(!app)return <div className="rounded-2xl border border-[#dce9e5] bg-white p-12 text-center text-sm text-[#71847f]">Memuat ruang audit...</div>;
+  const results=new Map(app.auditResults.map(r=>[`${r.section}:${r.criterion}`,r])); const statusText=app.status.replaceAll('_',' ');
+  return <div className="space-y-6"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="mb-2 text-xs font-bold text-[#08725b]">Ruang Kerja Auditor · {app.auditNumber}</p><h1 className="display-font text-3xl font-extrabold tracking-[-.05em] text-[#10211e]">{app.companyName}</h1><p className="mt-1 text-sm text-[#71847f]">{app.factoryName} · {app.type === 'SPPG' ? 'SPPG' : 'Pelaku Usaha'}</p></div><div className="flex items-center gap-2"><span className="rounded-full bg-[#fff4d7] px-3 py-1.5 text-[10px] font-bold text-[#a66a00]">{statusText}</span>{['MENUNGGU_AUDITOR','MENUNGGU_REVIEW'].includes(app.status)&&<button onClick={startAudit} disabled={!!busy} className="rounded-xl bg-[#08725b] px-4 py-2.5 text-xs font-bold text-white">{busy==='start'?'Memulai...':'Mulai Audit'}</button>}</div></div><div className="overflow-x-auto rounded-2xl border border-[#dce9e5] bg-white p-2"><div className="flex min-w-max gap-1">{tabs.map(({key,label,icon:Icon})=><button key={key} onClick={()=>setTab(key)} className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold ${tab===key?'bg-[#e7f5ef] text-[#08725b]':'text-[#71847f] hover:bg-[#f5f9f8]'}`}><Icon size={15}/>{label}</button>)}</div></div>{tab==='overview'&&<Overview app={app} setTab={setTab}/>} {tab==='company'&&<Card title="Data Perusahaan"><div className="grid gap-5 sm:grid-cols-2">{[['Nama Perusahaan',app.companyName],['Nama Pabrik / Usaha',app.factoryName],['Penanggung Jawab',app.ownerName],['Alamat',app.address],['NIB',app.nib||'-'],['STTD',app.sttd||'-'],['Tanggal Audit',app.auditDate?new Date(app.auditDate).toLocaleDateString('id-ID'):'Belum ditentukan'],['Penyelia',app.supervisor||'-']].map(([l,v])=><div key={String(l)}><p className="text-[10px] font-bold text-[#8a9b97]">{l}</p><p className="mt-1 text-sm text-[#234940]">{v}</p></div>)}</div></Card>} {tab==='products'&&<Card title={`Daftar Produk (${app.products.length})`}><SimpleTable headers={['No.','Nama Produk','Jenis','Kode Produksi']} rows={app.products.map((p,i)=>[String(i+1),p.name,p.type,p.productionCode||'-'])}/></Card>} {tab==='materials'&&<Card title={`Daftar Bahan (${app.ingredients.length})`}><SimpleTable headers={['No.','Bahan','Produsen','Sertifikat Halal','Keterangan']} rows={app.ingredients.map((m,i)=>[String(i+1),m.name,m.producer||'-',m.hasSH?'Ada':'Tidak ada',m.hasSH?`V SH BPJPH NO. ${m.shNumber}`:'Perlu pemeriksaan'])}/></Card>} {tab==='sjph'&&<Card title="Pemeriksaan Implementasi SJPH"><div className="space-y-5">{app.sjphResponses.length===0?<Empty text="Belum ada respons SJPH dari penyelia."/>:app.sjphResponses.map((response:any)=><AuditItem key={response.id} response={response} saved={results.get(`${response.criterion.category.code}:${response.criterion.title}`)} onSave={saveResult} busy={busy} note={note} setNote={setNote}/>)}</div></Card>} {tab==='evidence'&&<Card title={`Evidence & Dokumen (${app.evidences.length})`}><div className="grid gap-3 sm:grid-cols-2">{app.evidences.length===0?<Empty text="Belum ada evidence yang dikirim."/>:app.evidences.map((e:any)=><a key={e.id} href={e.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-xl border border-[#dce9e5] p-4 hover:bg-[#f5faf8]"><FileArchive className="text-[#08725b]" size={19}/><div className="min-w-0"><p className="truncate text-xs font-bold text-[#234940]">{e.fileName}</p><p className="mt-1 truncate text-[10px] text-[#71847f]">{e.fileType} · Buka tautan</p></div><ChevronRight size={15} className="ml-auto text-[#8a9b97]"/></a>)}</div></Card>} {tab==='findings'&&<div className="grid gap-5 lg:grid-cols-[1fr_360px]"><Card title={`Temuan (${app.temuan.length})`}><div className="space-y-3">{app.temuan.length===0?<Empty text="Belum ada temuan. Audit dapat ditutup setelah seluruh item sesuai."/>:app.temuan.map((f:any)=><div key={f.id} className="rounded-xl border border-[#f1ddd5] bg-[#fffaf8] p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold text-[#c54b39]">Temuan #{String(f.number).padStart(2,'0')} · {f.section}</p><p className="mt-2 text-sm font-semibold text-[#234940]">{f.description}</p>{f.instruction&&<p className="mt-2 text-xs text-[#71847f]">Instruksi: {f.instruction}</p>}</div><span className="rounded-full bg-[#fff4d7] px-2.5 py-1 text-[10px] font-bold text-[#a66a00]">{f.status}</span></div>{f.fixes?.length>0&&<p className="mt-3 text-[10px] font-semibold text-[#08725b]">{f.fixes.length} perbaikan dikirim</p>}</div>)}</div></Card><Card title="Tambah Temuan"><form onSubmit={addFinding} className="space-y-3"><input value={finding.section} onChange={e=>setFinding({...finding,section:e.target.value})} placeholder="Bagian, contoh: Bahan" className="h-10 w-full rounded-xl border border-[#dce9e5] px-3 text-xs outline-none focus:border-[#0a8065]" required/><input value={finding.criterion} onChange={e=>setFinding({...finding,criterion:e.target.value})} placeholder="Kriteria (opsional)" className="h-10 w-full rounded-xl border border-[#dce9e5] px-3 text-xs outline-none focus:border-[#0a8065]"/><textarea value={finding.description} onChange={e=>setFinding({...finding,description:e.target.value})} placeholder="Deskripsi temuan" rows={4} className="w-full rounded-xl border border-[#dce9e5] px-3 py-2.5 text-xs outline-none focus:border-[#0a8065]" required/><textarea value={finding.instruction} onChange={e=>setFinding({...finding,instruction:e.target.value})} placeholder="Instruksi perbaikan" rows={3} className="w-full rounded-xl border border-[#dce9e5] px-3 py-2.5 text-xs outline-none focus:border-[#0a8065]"/><button disabled={!!busy} className="w-full rounded-xl bg-[#08725b] py-3 text-xs font-bold text-white">{busy==='finding'?'Menyimpan...':'Simpan Temuan'}</button></form></Card></div>} {tab==='trail'&&<Card title="Audit Trail"><div className="space-y-4">{app.auditLogs.length===0?<Empty text="Belum ada aktivitas tercatat."/>:app.auditLogs.map((log:any)=><div key={log.id} className="flex gap-3 border-l-2 border-[#bde4d2] pl-4"><div><p className="text-xs font-semibold text-[#234940]">{log.description}</p><p className="mt-1 text-[10px] text-[#8a9b97]">{new Date(log.createdAt).toLocaleString('id-ID')} · {log.actor?.name||'Pengguna'}</p></div></div>)}</div></Card>}</div>;
 }
+function Card({title,children}:{title:string;children:React.ReactNode}){return <section className="rounded-2xl border border-[#dce9e5] bg-white p-5 shadow-[0_6px_20px_rgba(7,91,73,.035)] sm:p-7"><h2 className="display-font mb-5 text-lg font-bold text-[#183b34]">{title}</h2>{children}</section>}
+function Empty({text}:{text:string}){return <div className="rounded-xl border border-dashed border-[#cfe2dc] p-8 text-center text-xs text-[#71847f]">{text}</div>}
+function SimpleTable({headers,rows}:{headers:string[];rows:string[][]}){return <div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left text-xs"><thead className="bg-[#fbfdfc] text-[10px] font-bold text-[#8a9b97]"><tr>{headers.map(h=><th key={h} className="px-4 py-3">{h}</th>)}</tr></thead><tbody>{rows.map((row,i)=><tr key={i} className="border-t border-[#edf3f1] text-[#526b66]">{row.map((v,j)=><td key={j} className={`px-4 py-3 ${j===1?'font-semibold text-[#234940]':''}`}>{v}</td>)}</tr>)}</tbody></table></div>}
+function Overview({app,setTab}:{app:Application;setTab:(v:string)=>void}){const open=app.temuan.filter(f=>!['VERIFIED','CLOSED'].includes(f.status)).length;return <div className="space-y-5"><div className="grid gap-4 sm:grid-cols-3">{[['Produk',app.products.length,'products'],['Bahan',app.ingredients.length,'materials'],['Temuan terbuka',open,'findings']].map(([l,v,t])=><button key={String(l)} onClick={()=>setTab(String(t))} className="rounded-2xl border border-[#dce9e5] bg-white p-5 text-left hover:border-[#8cc7b1]"><p className="text-xs text-[#71847f]">{l}</p><p className="display-font mt-2 text-3xl font-extrabold text-[#183b34]">{v}</p><p className="mt-2 text-[10px] font-bold text-[#08725b]">Buka pemeriksaan <ChevronRight className="inline" size={12}/></p></button>)}</div><Card title="Ringkasan Audit"><div className="grid gap-5 sm:grid-cols-2"><div><p className="text-[10px] font-bold text-[#8a9b97]">Nomor Audit</p><p className="mt-1 text-sm font-semibold text-[#08725b]">{app.auditNumber}</p></div><div><p className="text-[10px] font-bold text-[#8a9b97]">Auditor</p><p className="mt-1 text-sm text-[#234940]">{app.assignments?.map(a=>a.auditor.name).join(', ')||'Belum ditetapkan'}</p></div></div></Card></div>}
+function AuditItem({response,saved,onSave,busy,note,setNote}:{response:any;saved:any;onSave:(s:string,c:string,r:string)=>void;busy:string;note:string;setNote:(v:string)=>void}){const [result,setResult]=useState(saved?.result||'');return <div className="rounded-2xl border border-[#e2eeeb] bg-[#fbfdfc] p-4 sm:p-5"><div className="flex items-start gap-3"><div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#e7f5ef] text-xs font-bold text-[#08725b]">{response.criterion.code.split('-').pop()}</div><div className="min-w-0 flex-1"><h3 className="text-sm font-bold text-[#234940]">{response.criterion.title}</h3><p className="mt-1 text-[10px] text-[#8a9b97]">{response.criterion.category.name}</p><div className="mt-4 flex flex-wrap gap-2">{resultOptions.map(o=><button key={o.value} onClick={()=>setResult(o.value)} className={`rounded-lg px-3 py-2 text-[10px] font-bold ${result===o.value?o.cls:'border border-[#dce9e5] bg-white text-[#71847f]'}`}>{result===o.value&&<Check className="mr-1 inline" size={12}/>} {o.label}</button>)}</div>{result&&result!=='SESUAI'&&result!=='TIDAK_BERLAKU'&&<textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Catatan auditor wajib diisi" rows={2} className="mt-3 w-full rounded-xl border border-[#dce9e5] bg-white px-3 py-2 text-xs outline-none focus:border-[#0a8065]"/>}<div className="mt-3 flex items-center justify-between gap-3"><p className="text-[10px] text-[#71847f]">Penyelia: {response.providerStatus.replaceAll('_',' ').toLowerCase()}</p><button disabled={!result||busy===response.criterion.title} onClick={()=>onSave(response.criterion.category.code,response.criterion.title,result)} className="inline-flex items-center gap-1.5 rounded-lg bg-[#08725b] px-3 py-2 text-[10px] font-bold text-white disabled:opacity-50">{busy===response.criterion.title?<Loader2 className="animate-spin" size={13}/>:<Save size={13}/>} Simpan hasil</button></div></div></div></div>}
