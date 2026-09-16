@@ -1,7 +1,31 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+@import "tailwindcss";
 
-body {
-  background: #f8fafc;
+:root {
+  --emerald-950: #063f34;
+  --emerald-900: #075b49;
+  --emerald-800: #08725b;
+  --emerald-700: #0a8065;
+  --emerald-100: #d9f2e9;
+  --paper: #f7fbfa;
+  --ink: #10211e;
+  --muted: #647873;
+  --line: #dce9e5;
 }
+
+* { box-sizing: border-box; }
+html { background: var(--paper); }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'DM Sans', Arial, sans-serif;
+}
+h1, h2, h3, h4, button, .display-font { font-family: 'Plus Jakarta Sans', 'DM Sans', sans-serif; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid rgba(10,128,101,.28); outline-offset: 2px; }
+
+@keyframes rise-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.animate-rise { animation: rise-in .55s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }

@@ -15,6 +15,7 @@
     "@prisma/client": "^5.15.0",
     "axios": "^1.20.0",
     "bcryptjs": "^3.0.3",
+    "clsx": "^2.1.1",
     "daisyui": "^5.7.38",
     "date-fns": "^4.4.0",
     "docx": "^9.7.1",
@@ -25,6 +26,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-hook-form": "^7.88.0",
+    "tailwind-merge": "^3.7.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

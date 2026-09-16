@@ -1,24 +1,5 @@
-import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-
-export default async function PenyeliaDashboard() {
-  const session = await getServerSession();
-  if (!session?.user?.id) return <div className="p-4">Silakan login</div>;
-  const pengajuans = await prisma.pengajuan.findMany({
-    where: { userId: session.user.id },
-  });
-
-  return (
-    <div className="p-4 space-y-4">
-      <h1 className="text-2xl font-bold">Dashboard Penyelia</h1>
-      <ul className="space-y-2">
-        {pengajuans.map((p) => (
-          <li key={p.id} className="card bg-base-200 p-4">
-            <div className="font-bold">{p.companyName}</div>
-            <div>Status: {p.status}</div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+import { ArrowRight, ClipboardList, FilePlus2, FileText, Plus } from 'lucide-react';
+import Link from 'next/link';
+const status: Record<string, { label: string; cls: string }> = { MENUNGGU_AUDIT: { label: 'Menunggu Audit', cls: 'bg-[#fff4d7] text-[#a66a00]' }, SEDANG_DIAUDIT: { label: 'Sedang Audit', cls: 'bg-[#dff3ed] text-[#08725b]' }, SELESAI: { label: 'Selesai', cls: 'bg-[#eee5ff] text-[#7443b6]' }, PERLU_PERBAIKAN: { label: 'Perlu Perbaikan', cls: 'bg-[#ffe6e2] text-[#c54b39]' }, DRAFT: { label: 'Draft', cls: 'bg-[#edf2f1] text-[#647873]' } };
+export default async function PenyeliaDashboard() { const list = await prisma.pengajuan.findMany({ orderBy: { updatedAt: 'desc' } }); const counts = { total: list.length, draft: list.filter(x => x.status === 'DRAFT').length, waiting: list.filter(x => x.status === 'MENUNGGU_AUDIT').length, audit: list.filter(x => x.status === 'SEDANG_DIAUDIT').length, done: list.filter(x => x.status === 'SELESAI').length }; return <div className="space-y-7"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="mb-2 text-xs font-bold text-[#08725b]">Portal Penyelia</p><h1 className="display-font text-3xl font-extrabold tracking-[-.05em] text-[#10211e]">Pengajuan Saya</h1><p className="mt-1 text-sm text-[#71847f]">Kelola data sertifikasi halal Anda dalam satu tempat.</p></div><Link href="/penyelia/pengajuan/new" className="flex items-center gap-2 rounded-xl bg-[#08725b] px-4 py-3 text-xs font-bold text-white shadow-[0_8px_18px_rgba(8,114,91,.17)]"><Plus size={16} /> Pengajuan Baru</Link></div><section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{[[ClipboardList,'Total',counts.total,'bg-[#e4f1ff] text-[#337bc0]'],[FileText,'Draft',counts.draft,'bg-[#edf2f1] text-[#647873]'],[FilePlus2,'Menunggu Audit',counts.waiting,'bg-[#fff3d6] text-[#d49a1e]'],[ClipboardList,'Sedang Audit',counts.audit,'bg-[#dff4ea] text-[#1e9a71]'],[FileText,'Selesai',counts.done,'bg-[#eee5ff] text-[#7443b6]']].map(([Icon,label,value,tint]: any[]) => <div key={String(label)} className="rounded-2xl border border-[#e2eeeb] bg-white p-4"><div className="flex items-center justify-between"><div><p className="text-[11px] text-[#71847f]">{String(label)}</p><p className="display-font mt-1 text-2xl font-extrabold text-[#183b34]">{String(value)}</p></div><div className={`grid h-9 w-9 place-items-center rounded-xl ${String(tint)}`}><Icon size={17} /></div></div></div>)}</section><section className="overflow-hidden rounded-2xl border border-[#e2eeeb] bg-white"><div className="border-b border-[#edf3f1] px-5 py-5"><h2 className="display-font font-bold text-[#183b34]">Daftar Pengajuan</h2><p className="mt-1 text-xs text-[#8a9b97]">Semua pengajuan sertifikasi halal yang Anda buat.</p></div>{list.length ? <div className="overflow-x-auto"><table className="w-full min-w-[680px] text-left text-xs"><thead className="bg-[#fbfdfc] text-[10px] font-bold text-[#8a9b97]"><tr><th className="px-5 py-3">No.</th><th className="px-5 py-3">Nama Usaha</th><th className="px-5 py-3">Jenis</th><th className="px-5 py-3">Diperbarui</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Aksi</th></tr></thead><tbody>{list.map((item,i) => <tr key={item.id} className="border-t border-[#edf3f1] text-[#526b66]"><td className="px-5 py-4 text-[#8a9b97]">{i+1}</td><td className="px-5 py-4 font-semibold text-[#234940]">{item.companyName}</td><td className="px-5 py-4">{item.type === 'SPPG' ? 'SPPG' : 'Pelaku Usaha'}</td><td className="px-5 py-4">{new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'short',year:'numeric'}).format(item.updatedAt)}</td><td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${(status[item.status] ?? status.DRAFT).cls}`}>{(status[item.status] ?? status.DRAFT).label}</span></td><td className="px-5 py-4"><Link href={`/penyelia/pengajuan/${item.id}`} className="inline-flex items-center gap-1 rounded-lg border border-[#dce9e5] px-3 py-1.5 text-[10px] font-bold text-[#45655d]">Detail <ArrowRight size={12}/></Link></td></tr>)}</tbody></table></div> : <div className="grid place-items-center px-5 py-16 text-center"><div className="grid h-14 w-14 place-items-center rounded-2xl bg-[#e7f5ef] text-[#08725b]"><FileText /></div><h3 className="mt-4 font-bold text-[#234940]">Belum ada pengajuan</h3><p className="mt-1 text-xs text-[#71847f]">Buat pengajuan sertifikasi halal pertama Anda.</p><Link href="/penyelia/pengajuan/new" className="mt-5 rounded-xl bg-[#08725b] px-4 py-2.5 text-xs font-bold text-white">Buat Pengajuan</Link></div>}</section></div> }

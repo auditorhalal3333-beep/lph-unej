@@ -1,23 +1,12 @@
 'use client';
-
-import { signIn } from 'next-auth/react';
+import Link from 'next/link';
 import { useState } from 'react';
+import { signIn } from 'next-auth/react';
+import { Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
+import { AuthShell } from '@/components/auth-shell';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await signIn('credentials', { email, password, callbackUrl: '/dashboard' });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="p-4 space-y-4 max-w-sm mx-auto">
-      <h1 className="text-xl font-bold">Login</h1>
-      <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="input input-bordered w-full" />
-      <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className="input input-bordered w-full" />
-      <button type="submit" className="btn btn-primary w-full">Login</button>
-    </form>
-  );
+  const [show, setShow] = useState(false); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [error, setError] = useState('');
+  async function handleSubmit(e: React.FormEvent) { e.preventDefault(); setError(''); const result = await signIn('credentials', { email, password, redirect: false }); if (result?.error) setError('Email atau password tidak sesuai.'); else window.location.href = '/dashboard'; }
+  return <AuthShell mode="login"><div className="rounded-[28px] border border-[#e0ebe8] bg-white p-7 shadow-[0_18px_45px_rgba(7,91,73,.07)] sm:p-9"><div className="mb-8"><div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-[#e5f5ee] text-[#08725b]"><LockKeyhole size={24} /></div><h1 className="display-font text-2xl font-extrabold tracking-[-.04em] text-[#10211e]">Selamat Datang</h1><p className="mt-2 text-sm leading-5 text-[#71847f]">Masuk ke Sistem Audit Sertifikasi Halal<br />LPH UNEJ</p></div>{error && <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}<form onSubmit={handleSubmit} className="space-y-4"><label className="block"><span className="mb-1.5 block text-xs font-semibold text-[#425954]">Email</span><span className="relative block"><Mail className="absolute left-3.5 top-3.5 text-[#71847f]" size={17} /><input value={email} onChange={e => setEmail(e.target.value)} type="email" required placeholder="nama@email.com" className="h-11 w-full rounded-xl border border-[#dce9e5] bg-[#fbfdfc] pl-10 pr-3 text-sm outline-none transition focus:border-[#0a8065]" /></span></label><label className="block"><span className="mb-1.5 block text-xs font-semibold text-[#425954]">Password</span><span className="relative block"><LockKeyhole className="absolute left-3.5 top-3.5 text-[#71847f]" size={17} /><input value={password} onChange={e => setPassword(e.target.value)} type={show ? 'text' : 'password'} required placeholder="Masukkan password" className="h-11 w-full rounded-xl border border-[#dce9e5] bg-[#fbfdfc] pl-10 pr-11 text-sm outline-none transition focus:border-[#0a8065]" /><button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-3 text-[#71847f]" aria-label="Tampilkan password">{show ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label><div className="flex items-center justify-between text-xs"><label className="flex items-center gap-2 text-[#526b66]"><input type="checkbox" className="h-4 w-4 accent-[#08725b]" /> Ingat saya</label><button type="button" className="font-semibold text-[#08725b]">Lupa password?</button></div><button type="submit" className="h-11 w-full rounded-xl bg-[#08725b] text-sm font-bold text-white shadow-[0_8px_18px_rgba(8,114,91,.2)] transition hover:bg-[#063f34]">Masuk</button></form><div className="mt-6 border-t border-[#edf2f0] pt-5 text-center text-xs text-[#71847f]">Belum punya akun? <Link href="/register" className="font-bold text-[#08725b]">Daftar sebagai Penyelia</Link></div></div></AuthShell>;
 }

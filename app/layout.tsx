@@ -1,38 +1,10 @@
-import { Inter } from 'next/font/google';
 import './globals.css';
-import Link from 'next/link';
-import { getServerSession } from 'next-auth';
-
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
-  title: 'LPH UNEJ',
-  description: 'Sistem Audit Halal LPH UNEJ',
+  title: 'LPH UNEJ — Sistem Audit Sertifikasi Halal',
+  description: 'Sistem Audit Sertifikasi Halal Lembaga Pemeriksa Halal Universitas Jember',
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession();
-
-  return (
-    <html lang="id" data-theme="light">
-      <body className={inter.className}>
-        <nav className="navbar bg-base-100 shadow mb-4">
-          <div className="container mx-auto flex gap-4 p-4">
-            <Link href="/" className="btn btn-ghost text-xl">LPH UNEJ</Link>
-            <Link href="/dashboard" className="btn btn-ghost">Dashboard</Link>
-            {session?.user?.role === 'SUPER_ADMIN' && <Link href="/admin" className="btn btn-ghost">Admin</Link>}
-            {session ? (
-              <Link href="/penyelia/dashboard" className="btn btn-ghost">Penyelia</Link>
-            ) : (
-              <>
-                <Link href="/login" className="btn btn-ghost">Login</Link>
-                <Link href="/register" className="btn btn-ghost">Register</Link>
-              </>
-            )}
-          </div>
-        </nav>
-        <main className="container mx-auto">{children}</main>
-      </body>
-    </html>
-  );
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return <html lang="id"><body>{children}</body></html>;
 }

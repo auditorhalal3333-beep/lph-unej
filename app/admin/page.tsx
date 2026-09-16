@@ -1,52 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { ArrowRight, ClipboardCheck, Clock3, FileCheck2, FileWarning, UsersRound } from 'lucide-react';
 import Link from 'next/link';
-
-export default async function AdminDashboard() {
-  const total = await prisma.pengajuan.count();
-  const waiting = await prisma.pengajuan.count({ where: { status: 'MENUNGGU_AUDIT' } });
-  const auditing = await prisma.pengajuan.count({ where: { status: 'SEDANG_DIAUDIT' } });
-  const done = await prisma.pengajuan.count({ where: { status: 'SELESAI' } });
-  const pengajuans = await prisma.pengajuan.findMany({ include: { user: true } });
-
-  return (
-    <div className="p-4 space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard Admin</h1>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="card bg-base-200 p-4">
-          <div className="text-lg">Total</div>
-          <div className="text-3xl font-bold">{total}</div>
-        </div>
-        <div className="card bg-base-200 p-4">
-          <div className="text-lg">Menunggu</div>
-          <div className="text-3xl font-bold">{waiting}</div>
-        </div>
-        <div className="card bg-base-200 p-4">
-          <div className="text-lg">Sedang Audit</div>
-          <div className="text-3xl font-bold">{auditing}</div>
-        </div>
-        <div className="card bg-base-200 p-4">
-          <div className="text-lg">Selesai</div>
-          <div className="text-3xl font-bold">{done}</div>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold">Daftar Pengajuan</h2>
-        {pengajuans.map((p) => (
-          <div key={p.id} className="card bg-base-200 p-4 flex justify-between items-center">
-            <div>
-              <div className="font-bold">{p.companyName}</div>
-              <div className="text-sm text-gray-500">{p.type} - {p.user?.name}</div>
-            </div>
-            <div className="flex gap-2">
-              <span className={`badge ${p.status === 'SELESAI' ? 'badge-success' : 'badge-warning'}`}>
-                {p.status}
-              </span>
-              <Link href={`/admin/pengajuan/${p.id}`} className="btn btn-sm btn-primary">Detail</Link>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+const labels: Record<string, string> = { DRAFT: 'Draft', MENUNGGU_AUDIT: 'Menunggu Review', SEDANG_DIAUDIT: 'Sedang Audit', PERLU_PERBAIKAN: 'Perlu Perbaikan', VERIFIKASI: 'Menunggu Verifikasi', SELESAI: 'Selesai' };
+export default async function AdminDashboard() { const [list, total, waiting, auditing, fixes, done] = await Promise.all([prisma.pengajuan.findMany({ include: { user: true, _count: { select: { products: true, ingredients: true, temuan: true } }, }, orderBy: { updatedAt: 'desc' } }), prisma.pengajuan.count(), prisma.pengajuan.count({ where: { status: 'MENUNGGU_AUDIT' } }), prisma.pengajuan.count({ where: { status: 'SEDANG_DIAUDIT' } }), prisma.pengajuan.count({ where: { status: 'PERLU_PERBAIKAN' } }), prisma.pengajuan.count({ where: { status: 'SELESAI' } })]); return <div className="space-y-7"><div><p className="mb-2 text-xs font-bold text-[#08725b]">Panel LPH UNEJ</p><h1 className="display-font text-3xl font-extrabold tracking-[-.05em] text-[#10211e]">Dashboard Admin</h1><p className="mt-1 text-sm text-[#71847f]">Pantau seluruh proses sertifikasi dan aktivitas audit.</p></div><section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{[[FileCheck2,'Total Pengajuan',total,'bg-[#e4f1ff] text-[#337bc0]'],[Clock3,'Menunggu Review',waiting,'bg-[#fff3d6] text-[#d49a1e]'],[ClipboardCheck,'Sedang Audit',auditing,'bg-[#dff4ea] text-[#1e9a71]'],[FileWarning,'Perlu Perbaikan',fixes,'bg-[#ffe6e2] text-[#c54b39]'],[UsersRound,'Selesai',done,'bg-[#eee5ff] text-[#7443b6]']].map(([Icon,label,value,tint]: any[]) => <div key={String(label)} className="rounded-2xl border border-[#e2eeeb] bg-white p-4"><div className="flex items-center justify-between"><div><p className="text-[11px] text-[#71847f]">{String(label)}</p><p className="display-font mt-1 text-2xl font-extrabold text-[#183b34]">{String(value)}</p></div><div className={`grid h-9 w-9 place-items-center rounded-xl ${String(tint)}`}><Icon size={17}/></div></div></div>)}</section><section className="overflow-hidden rounded-2xl border border-[#e2eeeb] bg-white"><div className="flex items-center justify-between border-b border-[#edf3f1] px-5 py-5"><div><h2 className="display-font font-bold text-[#183b34]">Pengajuan Terbaru</h2><p className="mt-1 text-xs text-[#8a9b97]">Daftar pengajuan yang membutuhkan perhatian tim.</p></div><span className="rounded-full bg-[#e7f5ef] px-3 py-1 text-[10px] font-bold text-[#08725b]">{list.length} pengajuan</span></div>{list.length ? <div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left text-xs"><thead className="bg-[#fbfdfc] text-[10px] font-bold text-[#8a9b97]"><tr><th className="px-5 py-3">No. Audit</th><th className="px-5 py-3">Perusahaan</th><th className="px-5 py-3">Penyelia</th><th className="px-5 py-3">Produk / Bahan</th><th className="px-5 py-3">Temuan</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Aksi</th></tr></thead><tbody>{list.map((item,i) => <tr key={item.id} className="border-t border-[#edf3f1] text-[#526b66]"><td className="px-5 py-4 font-semibold text-[#08725b]">LPH-{String(item.id).slice(-6).toUpperCase()}</td><td className="px-5 py-4"><div className="font-semibold text-[#234940]">{item.companyName}</div><div className="mt-1 text-[10px] text-[#8a9b97]">{item.type === 'SPPG' ? 'SPPG' : 'Pelaku Usaha'}</div></td><td className="px-5 py-4">{item.user.name}</td><td className="px-5 py-4">{item._count.products} / {item._count.ingredients}</td><td className="px-5 py-4">{item._count.temuan}</td><td className="px-5 py-4"><span className="rounded-full bg-[#fff4d7] px-2.5 py-1 text-[10px] font-bold text-[#a66a00]">{labels[item.status] ?? item.status}</span></td><td className="px-5 py-4"><Link href={`/admin/pengajuan/${item.id}`} className="inline-flex items-center gap-1 rounded-lg border border-[#dce9e5] px-3 py-1.5 text-[10px] font-bold text-[#45655d]">Detail <ArrowRight size={12}/></Link></td></tr>)}</tbody></table></div> : <div className="px-5 py-12 text-center text-sm text-[#71847f]">Belum ada pengajuan masuk.</div>}</section></div> }

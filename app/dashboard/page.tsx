@@ -1,32 +1,6 @@
 import { prisma } from '@/lib/prisma';
+import { ArrowUpRight, ClipboardCheck, Clock3, FileCheck2, Plus, TrendingUp } from 'lucide-react';
+import Link from 'next/link';
 
-export default async function DashboardPage() {
-  const total = await prisma.pengajuan.count();
-  const waiting = await prisma.pengajuan.count({ where: { status: 'MENUNGGU_AUDIT' } });
-  const auditing = await prisma.pengajuan.count({ where: { status: 'SEDANG_DIAUDIT' } });
-  const done = await prisma.pengajuan.count({ where: { status: 'SELESAI' } });
-
-  return (
-    <div className="p-4 space-y-4">
-      <h1 className="text-2xl font-bold">Dashboard LPH</h1>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="card bg-base-200 p-4">
-          <div className="text-lg">Total Pengajuan</div>
-          <div className="text-3xl font-bold">{total}</div>
-        </div>
-        <div className="card bg-base-200 p-4">
-          <div className="text-lg">Menunggu Audit</div>
-          <div className="text-3xl font-bold">{waiting}</div>
-        </div>
-        <div className="card bg-base-200 p-4">
-          <div className="text-lg">Sedang Audit</div>
-          <div className="text-3xl font-bold">{auditing}</div>
-        </div>
-        <div className="card bg-base-200 p-4">
-          <div className="text-lg">Selesai</div>
-          <div className="text-3xl font-bold">{done}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
+const statusMap: Record<string, { label: string; cls: string }> = { MENUNGGU_AUDIT: { label: 'Menunggu Audit', cls: 'bg-[#fff4d7] text-[#a66a00]' }, SEDANG_DIAUDIT: { label: 'Sedang Audit', cls: 'bg-[#dff3ed] text-[#08725b]' }, SELESAI: { label: 'Selesai', cls: 'bg-[#eee5ff] text-[#7443b6]' }, PERLU_PERBAIKAN: { label: 'Perlu Perbaikan', cls: 'bg-[#ffe6e2] text-[#c54b39]' }, DRAFT: { label: 'Draft', cls: 'bg-[#edf2f1] text-[#647873]' } };
+export default async function DashboardPage() { const [total, waiting, auditing, done, recent] = await Promise.all([prisma.pengajuan.count(), prisma.pengajuan.count({ where: { status: 'MENUNGGU_AUDIT' } }), prisma.pengajuan.count({ where: { status: 'SEDANG_DIAUDIT' } }), prisma.pengajuan.count({ where: { status: 'SELESAI' } }), prisma.pengajuan.findMany({ orderBy: { createdAt: 'desc' }, take: 5 })]); return <div className="space-y-7"><div className="flex flex-wrap items-end justify-between gap-4"><div><div className="mb-2 flex items-center gap-2 text-xs font-bold text-[#08725b]"><span className="h-2 w-2 rounded-full bg-[#29aa7d]" /> Ringkasan aktivitas</div><h1 className="display-font text-3xl font-extrabold tracking-[-.05em] text-[#10211e]">Dashboard</h1><p className="mt-1 text-sm text-[#71847f]">Selamat datang kembali, Yuni Angelia <span aria-hidden>👋</span></p></div><Link href="/penyelia/pengajuan/new" className="flex items-center gap-2 rounded-xl bg-[#08725b] px-4 py-3 text-xs font-bold text-white shadow-[0_8px_18px_rgba(8,114,91,.17)] transition hover:bg-[#063f34]"><Plus size={16} /> Pengajuan Baru</Link></div><section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[{ label: 'Total Pengajuan', value: total, icon: FileCheck2, tint: 'bg-[#e4f1ff] text-[#337bc0]' }, { label: 'Menunggu Audit', value: waiting, icon: Clock3, tint: 'bg-[#fff3d6] text-[#d49a1e]' }, { label: 'Sedang Audit', value: auditing, icon: ClipboardCheck, tint: 'bg-[#dff4ea] text-[#1e9a71]' }, { label: 'Selesai', value: done, icon: TrendingUp, tint: 'bg-[#eee5ff] text-[#7443b6]' }].map(({ label, value, icon: Icon, tint }) => <div key={label} className="rounded-2xl border border-[#e2eeeb] bg-white p-5 shadow-[0_6px_20px_rgba(7,91,73,.035)]"><div className="flex items-start justify-between"><div><p className="text-xs font-medium text-[#71847f]">{label}</p><p className="display-font mt-2 text-3xl font-extrabold tracking-[-.05em] text-[#183b34]">{value}</p></div><div className={`grid h-10 w-10 place-items-center rounded-xl ${tint}`}><Icon size={19} /></div></div><div className="mt-4 flex items-center gap-1 text-[10px] font-semibold text-[#35a077]"><ArrowUpRight size={12} /> Data terbarui hari ini</div></div>)}</section><section className="overflow-hidden rounded-2xl border border-[#e2eeeb] bg-white shadow-[0_6px_20px_rgba(7,91,73,.035)]"><div className="flex items-center justify-between border-b border-[#edf3f1] px-5 py-5"><div><h2 className="display-font text-base font-bold text-[#183b34]">Pengajuan Terbaru</h2><p className="mt-1 text-xs text-[#8a9b97]">Pantau perkembangan pengajuan sertifikasi halal Anda</p></div><button className="flex items-center gap-1 text-xs font-bold text-[#08725b]">Lihat Semua <ArrowUpRight size={14} /></button></div>{recent.length ? <div className="overflow-x-auto"><table className="w-full min-w-[700px] text-left text-xs"><thead className="bg-[#fbfdfc] text-[10px] font-bold text-[#8a9b97]"><tr><th className="px-5 py-3">No.</th><th className="px-5 py-3">Nama Perusahaan</th><th className="px-5 py-3">Jenis Sertifikasi</th><th className="px-5 py-3">Tanggal Pengajuan</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Aksi</th></tr></thead><tbody>{recent.map((item, index) => { const status = statusMap[item.status] ?? statusMap.DRAFT; return <tr key={item.id} className="border-t border-[#edf3f1] text-[#526b66]"><td className="px-5 py-4 text-[#8a9b97]">{index + 1}</td><td className="px-5 py-4 font-semibold text-[#234940]">{item.companyName}</td><td className="px-5 py-4">{item.type === 'SPPG' ? 'SPPG' : 'Sertifikasi Baru'}</td><td className="px-5 py-4">{new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(item.createdAt)}</td><td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${status.cls}`}>{status.label}</span></td><td className="px-5 py-4"><Link href={`/penyelia/pengajuan/${item.id}`} className="rounded-lg border border-[#dce9e5] px-3 py-1.5 text-[10px] font-bold text-[#45655d] hover:bg-[#f0f8f5]">Detail</Link></td></tr> })}</tbody></table></div> : <div className="px-5 py-12 text-center text-sm text-[#71847f]">Belum ada pengajuan. Mulai pengajuan pertama Anda.</div>}</section><div className="flex items-start gap-3 rounded-2xl border border-[#cde9de] bg-[#e8f7f0] px-5 py-4 text-xs text-[#256f59]"><div className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#bde4d2] font-bold">i</div><p><strong>Lengkapi data Anda</strong><br /><span className="text-[#598276]">Pastikan seluruh data dan dokumen telah lengkap untuk memperlancar proses audit.</span></p></div></div> }

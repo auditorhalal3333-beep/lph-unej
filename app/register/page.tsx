@@ -1,31 +1,13 @@
 'use client';
-
+import Link from 'next/link';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { AuthShell } from '@/components/auth-shell';
+import { Eye, EyeOff, LockKeyhole, Mail, Phone, UserRound, Building2 } from 'lucide-react';
 
 export default function RegisterPage() {
-  const router = useRouter();
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = await fetch('/api/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
-    if (res.ok) {
-      router.push('/login');
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="p-4 space-y-4 max-w-sm mx-auto">
-      <h1 className="text-xl font-bold">Register</h1>
-      <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nama" className="input input-bordered w-full" required />
-      <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email" className="input input-bordered w-full" required />
-      <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Password" className="input input-bordered w-full" required />
-      <button type="submit" className="btn btn-primary w-full">Register</button>
-    </form>
-  );
+  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', password: '', confirm: '' }); const [show, setShow] = useState(false); const [error, setError] = useState(''); const [done, setDone] = useState(false);
+  function change(key: keyof typeof form, value: string) { setForm(prev => ({ ...prev, [key]: value })); }
+  async function submit(e: React.FormEvent) { e.preventDefault(); setError(''); if (form.password !== form.confirm) { setError('Konfirmasi password tidak sama.'); return; } const res = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: form.name, email: form.email, password: form.password }) }); if (!res.ok) { setError('Email sudah digunakan atau data tidak valid.'); return; } setDone(true); }
+  const fields = [{ key: 'name', label: 'Nama Lengkap', placeholder: 'Nama lengkap', icon: UserRound }, { key: 'email', label: 'Email', placeholder: 'nama@email.com', icon: Mail }, { key: 'phone', label: 'Nomor Telepon', placeholder: '08xxxxxxxxxx', icon: Phone }, { key: 'company', label: 'Nama Perusahaan/Usaha', placeholder: 'Contoh: UD. Cita Rasa', icon: Building2 } ] as const;
+  return <AuthShell mode="register"><div className="rounded-[28px] border border-[#e0ebe8] bg-white p-7 shadow-[0_18px_45px_rgba(7,91,73,.07)] sm:p-9"><div className="mb-7"><div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-[#e5f5ee] text-[#08725b]"><UserRound size={24} /></div><h1 className="display-font text-2xl font-extrabold tracking-[-.04em] text-[#10211e]">Daftar Akun Penyelia</h1><p className="mt-2 text-sm text-[#71847f]">Lengkapi data berikut untuk membuat akun</p></div>{done ? <div className="rounded-2xl bg-[#e7f6ef] p-5 text-sm leading-6 text-[#075b49]">Akun berhasil dibuat. Silakan <Link href="/login" className="font-bold underline">masuk ke sistem</Link>.</div> : <>{error && <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}<form onSubmit={submit} className="space-y-4"><div className="grid gap-4 sm:grid-cols-2">{fields.map(({ key, label, placeholder, icon: Icon }) => <label key={key} className="block"><span className="mb-1.5 block text-xs font-semibold text-[#425954]">{label}</span><span className="relative block"><Icon className="absolute left-3 top-3 text-[#71847f]" size={16} /><input value={form[key]} onChange={e => change(key, e.target.value)} required={key !== 'phone' && key !== 'company'} placeholder={placeholder} className="h-10 w-full rounded-xl border border-[#dce9e5] bg-[#fbfdfc] pl-9 pr-3 text-xs outline-none transition focus:border-[#0a8065]" /></span></label>)}</div><div className="grid gap-4 sm:grid-cols-2"><label className="block"><span className="mb-1.5 block text-xs font-semibold text-[#425954]">Password</span><span className="relative block"><input value={form.password} onChange={e => change('password', e.target.value)} type={show ? 'text' : 'password'} required minLength={8} placeholder="Minimal 8 karakter" className="h-10 w-full rounded-xl border border-[#dce9e5] bg-[#fbfdfc] px-3 pr-9 text-xs outline-none focus:border-[#0a8065]" /><button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-3 text-[#71847f]" aria-label="Tampilkan password">{show ? <EyeOff size={15} /> : <Eye size={15} />}</button></span></label><label className="block"><span className="mb-1.5 block text-xs font-semibold text-[#425954]">Konfirmasi Password</span><span className="relative block"><input value={form.confirm} onChange={e => change('confirm', e.target.value)} type={show ? 'text' : 'password'} required placeholder="Ulangi password" className="h-10 w-full rounded-xl border border-[#dce9e5] bg-[#fbfdfc] px-3 text-xs outline-none focus:border-[#0a8065]" /></span></label></div><label className="flex items-start gap-2 text-[11px] leading-5 text-[#647873]"><input type="checkbox" required className="mt-1 h-4 w-4 accent-[#08725b]" />Saya menyetujui <span className="font-semibold text-[#08725b]">Syarat dan Ketentuan</span> serta <span className="font-semibold text-[#08725b]">Kebijakan Privasi</span></label><button type="submit" className="h-11 w-full rounded-xl bg-[#08725b] text-sm font-bold text-white shadow-[0_8px_18px_rgba(8,114,91,.2)] transition hover:bg-[#063f34]">Daftar Akun</button></form><div className="mt-6 border-t border-[#edf2f0] pt-5 text-center text-xs text-[#71847f]">Sudah punya akun? <Link href="/login" className="font-bold text-[#08725b]">Masuk di sini</Link></div></>}</div></AuthShell>;
 }
