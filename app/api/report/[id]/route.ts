@@ -1,38 +1,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { Document, Packer, Paragraph, TextRun } from 'docx';
+import { buildAuditReport } from '@/lib/report';
+import { getCurrentUser, canAccessApplication } from '@/lib/auth';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await params;
-  const pengajuan = await prisma.pengajuan.findUnique({
-    where: { id },
-    include: { products: true, ingredients: true, sjphSections: { include: { items: true } }, temuan: { include: { fixes: true } } },
-  });
+  if (!(await canAccessApplication(user.id, user.role, id))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const pengajuan = await prisma.pengajuan.findUnique({ where: { id }, include: { products: true, ingredients: true, sjphResponses: { include: { criterion: { include: { category: true } }, evidences: true } }, temuan: { include: { fixes: true } } } });
   if (!pengajuan) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
-  const doc = new Document({
-    sections: [
-      {
-        properties: {},
-        children: [
-          new Paragraph({ children: [new TextRun({ text: 'Laporan Audit Halal', bold: true, size: 28 })] }),
-          new Paragraph(`Perusahaan: ${pengajuan.companyName}`),
-          new Paragraph(`Pabrik: ${pengajuan.factoryName}`),
-          new Paragraph(`Pemilik: ${pengajuan.ownerName}`),
-          new Paragraph(`Alamat: ${pengajuan.address}`),
-          new Paragraph(`NIB: ${pengajuan.nib ?? '-'}`),
-          new Paragraph(`STTD: ${pengajuan.sttd ?? '-'}`),
-          new Paragraph(`Penyelia: ${pengajuan.supervisor ?? '-'}`),
-        ],
-      },
-    ],
-  });
-
-  const buffer = await Packer.toBuffer(doc);
-  return new NextResponse(Buffer.from(buffer), {
-    headers: {
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'Content-Disposition': 'attachment; filename=laporan.docx',
-    },
-  });
+  const doc = buildAuditReport(pengajuan);
+  const buffer = await (await import('docx')).Packer.toBuffer(doc);
+  const version = await prisma.report.count({ where: { pengajuanId: id } }) + 1;
+  await prisma.report.create({ data: { pengajuanId: id, version, fileName: `${pengajuan.auditNumber}-laporan.docx`, format: 'DOCX' } });
+  return new NextResponse(Buffer.from(buffer), { headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'Content-Disposition': `attachment; filename="${pengajuan.auditNumber}-laporan.docx"` } });
 }

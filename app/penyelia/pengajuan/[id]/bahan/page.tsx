@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 
 export default function BahanPage() {
   const params = useParams();
   const [ingredients, setIngredients] = useState<any[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [form, setForm] = useState({ name: '', brand: '', producer: '', supplier: '', hasSH: false, shNumber: '', shDate: '', notes: '' });
+
+  useEffect(() => { fetch(`/api/ingredients?pengajuanId=${params.id}`).then(r => r.json()).then(data => { setIngredients(Array.isArray(data) ? data : []); setLoaded(true); }); }, [params.id]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,39 +27,9 @@ export default function BahanPage() {
 
   return (
     <div className="p-4 space-y-4">
-      <h1 className="text-2xl font-bold">Daftar Bahan</h1>
-      <form onSubmit={handleAdd} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nama Bahan" className="input input-bordered" required />
-          <input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} placeholder="Merek" className="input input-bordered" />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <input value={form.producer} onChange={(e) => setForm({ ...form, producer: e.target.value })} placeholder="Produsen" className="input input-bordered" />
-          <input value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} placeholder="Supplier" className="input input-bordered" />
-        </div>
-        <div className="flex items-center gap-4">
-          <label className="cursor-pointer flex items-center gap-2">
-            <input type="checkbox" checked={form.hasSH} onChange={(e) => setForm({ ...form, hasSH: e.target.checked })} className="checkbox" />
-            <span>Memiliki SH</span>
-          </label>
-          {form.hasSH && (
-            <>
-              <input value={form.shNumber} onChange={(e) => setForm({ ...form, shNumber: e.target.value })} placeholder="Nomor SH" className="input input-bordered" />
-              <input type="date" value={form.shDate} onChange={(e) => setForm({ ...form, shDate: e.target.value })} className="input input-bordered" />
-            </>
-          )}
-        </div>
-        <button type="submit" className="btn btn-primary">Tambah</button>
-      </form>
-      <ul className="space-y-2">
-        {ingredients.map((i: any, idx: number) => (
-          <li key={idx} className="card bg-base-200 p-4">
-            <div className="font-bold">{i.name}</div>
-            <div>{i.brand} - {i.producer}</div>
-            {i.hasSH && <div className="text-sm text-green-600">SH: {i.shNumber}</div>}
-          </li>
-        ))}
-      </ul>
+      <div className="rounded-2xl border border-[#dce9e5] bg-white p-6 shadow-[0_6px_20px_rgba(7,91,73,.035)]"><h1 className="display-font mb-5 text-xl font-bold text-[#183b34]">Daftar Bahan</h1><p className="mb-5 text-xs text-[#71847f]">Masukkan setiap bahan satu kali. Bahan yang sama dapat digunakan di beberapa produk.</p>
+      <form onSubmit={handleAdd} className="space-y-4"><div className="grid gap-3 sm:grid-cols-2"><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nama Bahan" className="h-11 rounded-xl border border-[#dce9e5] bg-[#fbfdfc] px-3 text-xs outline-none focus:border-[#0a8065]" required /><input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} placeholder="Merek" className="h-11 rounded-xl border border-[#dce9e5] bg-[#fbfdfc] px-3 text-xs outline-none focus:border-[#0a8065]" /></div><div className="grid gap-3 sm:grid-cols-2"><input value={form.producer} onChange={(e) => setForm({ ...form, producer: e.target.value })} placeholder="Produsen" className="h-11 rounded-xl border border-[#dce9e5] bg-[#fbfdfc] px-3 text-xs outline-none focus:border-[#0a8065]" /><input value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} placeholder="Supplier" className="h-11 rounded-xl border border-[#dce9e5] bg-[#fbfdfc] px-3 text-xs outline-none focus:border-[#0a8065]" /></div><label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-[#425954]"><input type="checkbox" checked={form.hasSH} onChange={(e) => setForm({ ...form, hasSH: e.target.checked })} className="h-4 w-4 accent-[#08725b]" /> Bahan memiliki Sertifikat Halal</label>{form.hasSH && <div className="grid gap-3 rounded-xl bg-[#f0faf6] p-4 sm:grid-cols-2"><input value={form.shNumber} onChange={(e) => setForm({ ...form, shNumber: e.target.value })} placeholder="Nomor SH" className="h-10 rounded-xl border border-[#cde9de] bg-white px-3 text-xs outline-none focus:border-[#0a8065]" required /><input type="date" value={form.shDate} onChange={(e) => setForm({ ...form, shDate: e.target.value })} className="h-10 rounded-xl border border-[#cde9de] bg-white px-3 text-xs outline-none focus:border-[#0a8065]" /></div>}<button type="submit" className="rounded-xl bg-[#08725b] px-5 py-3 text-xs font-bold text-white">Tambah Bahan</button></form></div>
+      <ul className="space-y-3">{!loaded ? <li className="rounded-2xl border border-[#dce9e5] bg-white p-6 text-sm text-[#71847f]">Memuat bahan...</li> : ingredients.length === 0 ? <li className="rounded-2xl border border-dashed border-[#cfe2dc] bg-white p-10 text-center text-sm text-[#71847f]">Belum ada bahan ditambahkan.</li> : ingredients.map((i: any, idx: number) => <li key={idx} className="flex items-center justify-between rounded-2xl border border-[#dce9e5] bg-white p-5"><div><div className="text-sm font-bold text-[#234940]">{i.name}</div><div className="mt-1 text-xs text-[#71847f]">{[i.brand, i.producer].filter(Boolean).join(' · ') || 'Informasi produsen belum diisi'}</div>{i.hasSH && <div className="mt-2 text-[10px] font-bold text-[#08725b]">✓ SH BPJPH: {i.shNumber}</div>}</div><span className={`rounded-full px-3 py-1 text-[10px] font-bold ${i.hasSH ? 'bg-[#e7f5ef] text-[#08725b]' : 'bg-[#fff4d7] text-[#a66a00]'}`}>{i.hasSH ? 'Memiliki SH' : 'Perlu Pemeriksaan'}</span></li>)}</ul>
     </div>
   );
 }

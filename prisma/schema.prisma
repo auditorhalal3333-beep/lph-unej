@@ -8,58 +8,158 @@ generator client {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      String   @default("PENYELIA")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  pengajuans Pengajuan[]
+  id                  String             @id @default(cuid())
+  email               String             @unique
+  password            String
+  name                String
+  role                String             @default("PENYELIA")
+  phone               String?
+  company             String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  pengajuans          Pengajuan[]
+  assignments         AuditAssignment[]
+  auditLogs           AuditLog[]
+  notifications       Notification[]
+  uploadedEvidences   Evidence[]
 }
 
 model Pengajuan {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id])
-  type         String
-  status       String   @default("DRAFT")
-  companyName  String
-  factoryName  String
-  ownerName    String
-  address      String
-  nib          String?
-  sttd         String?
-  supervisor   String?
-  contact      String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  products     Product[]
-  ingredients  Ingredient[]
-  sjphSections SjphSection[]
-  temuan       Temuan[]
+  id              String             @id @default(cuid())
+  userId          String
+  user            User               @relation(fields: [userId], references: [id])
+  auditNumber     String             @unique @default(cuid())
+  type            String
+  status          String             @default("DRAFT")
+  companyName     String
+  factoryName     String
+  ownerName       String
+  address         String
+  province        String?
+  regency         String?
+  district        String?
+  village         String?
+  nib             String?
+  nibEvidenceUrl  String?
+  sttd            String?
+  registrationType String?
+  productGroup    String?
+  supervisor      String?
+  contact         String?
+  auditDate       DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  products        Product[]
+  ingredients     Ingredient[]
+  sjphSections    SjphSection[]
+  sjphResponses   SjphResponse[]
+  temuan          Temuan[]
+  assignments     AuditAssignment[]
+  evidences       Evidence[]
+  auditResults    AuditResult[]
+  auditLogs       AuditLog[]
+  notifications   Notification[]
+  reports         Report[]
+}
+
+model AuditAssignment {
+  id           String    @id @default(cuid())
+  pengajuanId  String
+  auditorId    String
+  pengajuan    Pengajuan @relation(fields: [pengajuanId], references: [id])
+  auditor      User      @relation(fields: [auditorId], references: [id])
+  assignedAt   DateTime  @default(now())
+  startedAt    DateTime?
+  completedAt  DateTime?
+  notes        String?
+  @@unique([pengajuanId, auditorId])
+  @@index([auditorId])
 }
 
 model Product {
-  id          String    @id @default(cuid())
-  pengajuanId String
-  pengajuan   Pengajuan @relation(fields: [pengajuanId], references: [id])
-  name        String
-  type        String
+  id              String           @id @default(cuid())
+  pengajuanId     String
+  pengajuan       Pengajuan        @relation(fields: [pengajuanId], references: [id])
+  name            String
+  type            String
+  description     String?
+  productionCode  String?
+  evidenceUrl     String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  materials       ProductMaterial[]
+  evidences       Evidence[]
+}
+
+model ProductMaterial {
+  productId    String
+  ingredientId String
+  quantity     String?
+  product      Product    @relation(fields: [productId], references: [id])
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  @@id([productId, ingredientId])
 }
 
 model Ingredient {
-  id          String    @id @default(cuid())
-  pengajuanId String
-  pengajuan   Pengajuan @relation(fields: [pengajuanId], references: [id])
+  id             String            @id @default(cuid())
+  pengajuanId    String
+  pengajuan      Pengajuan         @relation(fields: [pengajuanId], references: [id])
+  name           String
+  brand          String?
+  category       String?
+  producer       String?
+  supplier       String?
+  status         String            @default("AKTIF")
+  hasSH          Boolean           @default(false)
+  shNumber       String?
+  shDate         DateTime?
+  shEvidenceUrl  String?
+  notes          String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  products       ProductMaterial[]
+  evidences      Evidence[]
+}
+
+model SjphCategory {
+  id          String        @id @default(cuid())
+  code        String        @unique
   name        String
-  brand       String?
-  producer    String?
-  supplier    String?
-  hasSH       Boolean   @default(false)
-  shNumber    String?
-  shDate      DateTime?
-  notes       String?
+  description String?
+  active      Boolean       @default(true)
+  sortOrder   Int           @default(0)
+  criteria    SjphCriterion[]
+}
+
+model SjphCriterion {
+  id          String        @id @default(cuid())
+  categoryId  String
+  category    SjphCategory  @relation(fields: [categoryId], references: [id])
+  code        String
+  title       String
+  description String?
+  evidenceHint String?
+  required    Boolean       @default(true)
+  active      Boolean       @default(true)
+  type        String        @default("ALL")
+  sortOrder   Int           @default(0)
+  responses   SjphResponse[]
+  @@unique([categoryId, code])
+}
+
+model SjphResponse {
+  id             String        @id @default(cuid())
+  pengajuanId    String
+  criterionId    String
+  pengajuan      Pengajuan     @relation(fields: [pengajuanId], references: [id])
+  criterion      SjphCriterion @relation(fields: [criterionId], references: [id])
+  providerStatus String        @default("BELUM_DIISI")
+  providerNotes  String?
+  auditorResult  String?
+  auditorNotes   String?
+  updatedAt      DateTime      @updatedAt
+  evidences      Evidence[]
+  @@unique([pengajuanId, criterionId])
 }
 
 model SjphSection {
@@ -69,31 +169,139 @@ model SjphSection {
   sectionType String
   title       String
   items       SjphItem[]
+  @@unique([pengajuanId, sectionType])
 }
 
 model SjphItem {
-  id          String      @id @default(cuid())
-  sectionId   String
-  section     SjphSection @relation(fields: [sectionId], references: [id])
-  label       String
-  evidenceUrl String?
-  notes       String?
+  id             String      @id @default(cuid())
+  sectionId      String
+  section        SjphSection @relation(fields: [sectionId], references: [id])
+  label          String
+  evidenceUrl    String?
+  notes          String?
+  providerStatus String      @default("BELUM_DIISI")
+  auditorResult  String?
+  auditorNote    String?
+  required       Boolean     @default(true)
+  evidences      Evidence[]
+}
+
+model Evidence {
+  id             String          @id @default(cuid())
+  pengajuanId    String
+  uploaderId     String
+  pengajuan      Pengajuan       @relation(fields: [pengajuanId], references: [id])
+  uploader       User            @relation(fields: [uploaderId], references: [id])
+  criterionId    String?
+  responseId     String?
+  sjphResponse   SjphResponse?   @relation(fields: [responseId], references: [id])
+  productId      String?
+  product        Product?        @relation(fields: [productId], references: [id])
+  ingredientId   String?
+  ingredient     Ingredient?     @relation(fields: [ingredientId], references: [id])
+  itemId         String?
+  sjphItem       SjphItem?       @relation(fields: [itemId], references: [id])
+  findingId      String?
+  finding        Temuan?         @relation(fields: [findingId], references: [id])
+  fileName       String
+  fileType       String
+  fileSize       Int?
+  source         String          @default("DRIVE")
+  url            String
+  cloudinaryPublicId String?
+  description    String?
+  createdAt      DateTime        @default(now())
+  @@index([pengajuanId])
+}
+
+model AuditResult {
+  id          String    @id @default(cuid())
+  pengajuanId String
+  section     String
+  criterion   String
+  result      String
+  note        String?
+  auditorId   String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  pengajuan   Pengajuan @relation(fields: [pengajuanId], references: [id])
+  @@unique([pengajuanId, section, criterion])
 }
 
 model Temuan {
-  id          String      @id @default(cuid())
-  pengajuanId String
-  pengajuan   Pengajuan   @relation(fields: [pengajuanId], references: [id])
-  section     String
-  description String
-  status      String      @default("PERLU_PERBAIKAN")
-  fixes       TemuanFix[]
+  id              String             @id @default(cuid())
+  pengajuanId     String
+  pengajuan       Pengajuan          @relation(fields: [pengajuanId], references: [id])
+  number          Int                @default(1)
+  section         String
+  criterion       String?
+  category        String?
+  description     String
+  instruction     String?
+  status          String             @default("OPEN")
+  auditorId       String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  response        String?
+  responseAt      DateTime?
+  fixes           TemuanFix[]
+  evidences       Evidence[]
+  verifications   FindingVerification[]
+  @@index([pengajuanId, status])
 }
 
 model TemuanFix {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   temuanId    String
-  temuan      Temuan  @relation(fields: [temuanId], references: [id])
+  temuan      Temuan   @relation(fields: [temuanId], references: [id])
   evidenceUrl String
   notes       String?
+  status      String   @default("SUBMITTED")
+  createdAt   DateTime @default(now())
+}
+
+model FindingVerification {
+  id         String   @id @default(cuid())
+  findingId  String
+  auditorId  String
+  finding    Temuan   @relation(fields: [findingId], references: [id])
+  result     String
+  note       String?
+  createdAt  DateTime @default(now())
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  pengajuanId String
+  actorId     String
+  action      String
+  description String
+  metadata    String?
+  createdAt   DateTime  @default(now())
+  pengajuan   Pengajuan @relation(fields: [pengajuanId], references: [id])
+  actor       User      @relation(fields: [actorId], references: [id])
+  @@index([pengajuanId, createdAt])
+}
+
+model Notification {
+  id          String    @id @default(cuid())
+  userId      String
+  pengajuanId String?
+  user        User      @relation(fields: [userId], references: [id])
+  pengajuan   Pengajuan? @relation(fields: [pengajuanId], references: [id])
+  title       String
+  message     String
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+  @@index([userId, readAt])
+}
+
+model Report {
+  id          String    @id @default(cuid())
+  pengajuanId String
+  pengajuan   Pengajuan @relation(fields: [pengajuanId], references: [id])
+  version     Int       @default(1)
+  fileName    String
+  format      String    @default("DOCX")
+  createdAt   DateTime  @default(now())
 }
