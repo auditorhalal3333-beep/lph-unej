@@ -6,10 +6,10 @@ export default function Home() {
       <p className="text-gray-500">Lembaga Pemeriksa Halal - Universitas Jember</p>
       <div className="flex gap-4">
         <a href="/login" className="btn btn-primary btn-lg">Login</a>
-        <a href="/register" className="btn btn-secondary btn-lg">Register</a>
+        <a href="/register" className="btn btn-secondary btn-lg">Register Penyelia</a>
       </div>
-      <div className="text-sm text-gray-400">
-        <p>admin@example.com / password123</p>
+      <div className="text-sm text-gray-400 mt-8">
+        <p>Demo Admin: admin@example.com / password123</p>
       </div>
     </div>
   );
