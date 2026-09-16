@@ -32,5 +32,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   if (!(await canAccessApplication(user.id, user.role, id))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const body = await req.json();
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user.role);
+  const isOwnerSubmit = user.role === 'PENYELIA' && body.status === 'DIAJUKAN';
+  if (!isAdmin && !isOwnerSubmit) return NextResponse.json({ error: 'Anda tidak dapat mengubah workflow pengajuan.' }, { status: 403 });
   try { const updated = await changeApplicationStatus(id, body.status, user.id, body.description ?? ''); return NextResponse.json(updated); } catch (error) { const message = error instanceof Error && error.message === 'INVALID_TRANSITION' ? 'Perubahan status tidak diizinkan.' : 'Permintaan tidak dapat diproses.'; return NextResponse.json({ error: message }, { status: 400 }); }
 }

@@ -19,10 +19,12 @@ export default async function PengajuanDetail({ params }: { params: Promise<{ id
         <p><strong>Pabrik:</strong> {pengajuan.factoryName}</p>
       </div>
 
-      <div className="flex gap-4">
-        <Link href={`/penyelia/pengajuan/${id}/produk`} className="btn btn-primary">Produk</Link>
-        <Link href={`/penyelia/pengajuan/${id}/bahan`} className="btn btn-secondary">Bahan</Link>
-        <Link href={`/penyelia/pengajuan/${id}/sjph`} className="btn btn-accent">SJPH</Link>
+      <div className="flex flex-wrap gap-3">
+        <Link href={`/penyelia/pengajuan/${id}/produk`} className="rounded-xl bg-[#08725b] px-4 py-3 text-xs font-bold text-white">Produk</Link>
+        <Link href={`/penyelia/pengajuan/${id}/bahan`} className="rounded-xl bg-[#0a8065] px-4 py-3 text-xs font-bold text-white">Bahan</Link>
+        <Link href={`/penyelia/pengajuan/${id}/sjph`} className="rounded-xl bg-[#1c9274] px-4 py-3 text-xs font-bold text-white">Implementasi SJPH</Link>
+        <Link href={`/penyelia/pengajuan/${id}/temuan`} className="rounded-xl border border-[#dce9e5] bg-white px-4 py-3 text-xs font-bold text-[#c54b39]">Temuan & Perbaikan</Link>
+        <a href={`/api/report/${id}`} className="rounded-xl bg-[#075b49] px-4 py-3 text-xs font-bold text-white">Download Laporan</a>
       </div>
     </div>
   );

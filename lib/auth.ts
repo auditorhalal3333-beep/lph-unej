@@ -1,10 +1,11 @@
 import { getServerSession } from 'next-auth';
-import { prisma } from '@/lib/prisma';
+import { authOptions } from './auth-options';
+import { prisma } from './prisma';
 
 export type AppRole = 'SUPER_ADMIN' | 'ADMIN' | 'AUDITOR' | 'PENYELIA';
 
 export async function getCurrentUser() {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   if (!session?.user?.id) return null;
   return prisma.user.findUnique({ where: { id: session.user.id } });
 }
