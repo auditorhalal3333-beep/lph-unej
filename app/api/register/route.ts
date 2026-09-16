@@ -10,6 +10,7 @@ export async function POST(req: Request) {
       email: body.email,
       password: hashed,
       name: body.name,
+      role: 'PENYELIA',
     },
   });
   return NextResponse.json({ id: user.id, email: user.email });
