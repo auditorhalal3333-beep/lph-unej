@@ -1,7 +1,3 @@
-import { definePrismaConfig } from "prisma/config";
-
-export default definePrismaConfig({
-  skills: {
-    agents: ["claude", "cursor", "agents", "devin"],
-  },
-});
+// Prisma 5 reads configuration from prisma/schema.prisma.
+// This file intentionally contains no Prisma 7-only imports.
+export {};
