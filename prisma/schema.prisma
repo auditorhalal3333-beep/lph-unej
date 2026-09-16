@@ -1,0 +1,99 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("PENYELIA")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  pengajuans Pengajuan[]
+}
+
+model Pengajuan {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  type         String
+  status       String   @default("DRAFT")
+  companyName  String
+  factoryName  String
+  ownerName    String
+  address      String
+  nib          String?
+  sttd         String?
+  supervisor   String?
+  contact      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  products     Product[]
+  ingredients  Ingredient[]
+  sjphSections SjphSection[]
+  temuan       Temuan[]
+}
+
+model Product {
+  id          String    @id @default(cuid())
+  pengajuanId String
+  pengajuan   Pengajuan @relation(fields: [pengajuanId], references: [id])
+  name        String
+  type        String
+}
+
+model Ingredient {
+  id          String    @id @default(cuid())
+  pengajuanId String
+  pengajuan   Pengajuan @relation(fields: [pengajuanId], references: [id])
+  name        String
+  brand       String?
+  producer    String?
+  supplier    String?
+  hasSH       Boolean   @default(false)
+  shNumber    String?
+  shDate      DateTime?
+  notes       String?
+}
+
+model SjphSection {
+  id          String      @id @default(cuid())
+  pengajuanId String
+  pengajuan   Pengajuan   @relation(fields: [pengajuanId], references: [id])
+  sectionType String
+  title       String
+  items       SjphItem[]
+}
+
+model SjphItem {
+  id          String      @id @default(cuid())
+  sectionId   String
+  section     SjphSection @relation(fields: [sectionId], references: [id])
+  label       String
+  evidenceUrl String?
+  notes       String?
+}
+
+model Temuan {
+  id          String      @id @default(cuid())
+  pengajuanId String
+  pengajuan   Pengajuan   @relation(fields: [pengajuanId], references: [id])
+  section     String
+  description String
+  status      String      @default("PERLU_PERBAIKAN")
+  fixes       TemuanFix[]
+}
+
+model TemuanFix {
+  id          String  @id @default(cuid())
+  temuanId    String
+  temuan      Temuan  @relation(fields: [temuanId], references: [id])
+  evidenceUrl String
+  notes       String?
+}
