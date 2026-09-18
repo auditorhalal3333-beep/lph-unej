@@ -28,18 +28,18 @@ export function buildAuditReport(application: any) {
     new Paragraph({ children: [new TextRun({ text: 'IMPLEMENTASI SJPH', bold: true, size: 24 })] }),
   ];
   const responses = application.sjphResponses || [];
+  const resultLabel: Record<string, string> = { SESUAI: 'Sesuai', PERLU_PERBAIKAN: 'Perlu Perbaikan', TIDAK_SESUAI: 'Tidak Sesuai', TIDAK_BERLAKU: 'Tidak Berlaku' };
   for (const category of ['KOMITMEN', 'BAHAN', 'PROSES', 'PRODUK', 'EVALUASI']) {
     const items = responses.filter((r: any) => r.criterion?.category?.code === category).sort((a: any, b: any) => (a.criterion?.sortOrder || 0) - (b.criterion?.sortOrder || 0));
     if (items.length) {
-      const auditItems = items.map((r: any) => {
-        const audit = (application.auditResults || []).find((item: any) => item.section === category && item.criterion === r.criterion.title);
-        const result = audit?.result || r.auditorResult || 'Belum diperiksa';
-        const comment = audit?.note || r.auditorNotes;
-        return `${r.criterion.title}: ${result}${comment ? ` — ${comment}` : ''}`;
-      });
+      const audits = items.map((r: any) => (application.auditResults || []).find((item: any) => item.section === category && item.criterion === r.criterion.title) || r);
+      const counts = audits.reduce((summary: Record<string, number>, audit: any) => { const key = resultLabel[audit?.result || audit?.auditorResult] || 'Belum diperiksa'; summary[key] = (summary[key] || 0) + 1; return summary; }, {});
+      const statusSummary = Object.entries(counts).map(([label, count]) => `${label}: ${count}`).join('; ');
+      const comments = [...new Set(audits.map((audit: any) => audit?.note || audit?.auditorNotes).filter(Boolean))] as string[];
+      const auditItems = [statusSummary || 'Belum diperiksa', ...comments];
       const evidenceItems = items.map((r: any) => {
-        const evidence = [r.providerNotes, ...(r.evidences || []).map((e: any) => e.url)].filter(Boolean).join(' · ');
-        return `${r.criterion.title}: ${evidence || '-'}`;
+        const evidence = [r.providerNotes, ...(r.evidences || []).map((e: any) => e.url)].filter(Boolean);
+        return `${r.criterion.title}: ${evidence.length ? evidence.join(' · ') : 'Belum diisi'}`;
       });
       sections.push(new Paragraph({ spacing: { before: 300 }, children: [new TextRun({ text: items[0].criterion.category.name, bold: true, size: 21 })] }));
       sections.push(table(['Kriteria', 'Hasil Audit', 'Bukti / Keterangan'], [[items[0].criterion.category.name, numbered(auditItems), numbered(evidenceItems)]]));
