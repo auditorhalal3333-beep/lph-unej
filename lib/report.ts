@@ -3,6 +3,7 @@ import { ingredientDescription } from './domain';
 
 const cell = (text: string, width: number, bold = false) => new TableCell({ width: { size: width, type: WidthType.DXA }, children: [new Paragraph({ children: [new TextRun({ text: text || '-', bold, size: 18 })] })] });
 const table = (headers: string[], rows: string[][]) => new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: headers.map(() => Math.floor(9360 / headers.length)), rows: [new TableRow({ tableHeader: true, children: headers.map(h => cell(h, Math.floor(9360 / headers.length), true)) }), ...rows.map(row => new TableRow({ children: row.map(value => cell(value, Math.floor(9360 / headers.length))) }))] });
+const numbered = (items: string[]) => items.filter(Boolean).map((item, index) => `${index + 1}) ${item}`).join('\n');
 
 export function buildAuditReport(application: any) {
   const sections: (Paragraph | Table)[] = [
@@ -28,8 +29,21 @@ export function buildAuditReport(application: any) {
   ];
   const responses = application.sjphResponses || [];
   for (const category of ['KOMITMEN', 'BAHAN', 'PROSES', 'PRODUK', 'EVALUASI']) {
-    const items = responses.filter((r: any) => r.criterion?.category?.code === category);
-    if (items.length) { sections.push(new Paragraph({ spacing: { before: 300 }, children: [new TextRun({ text: items[0].criterion.category.name, bold: true, size: 21 })] })); sections.push(table(['Kriteria', 'Hasil Audit', 'Bukti / Keterangan'], items.map((r: any) => [r.criterion.title, r.auditorResult || 'Belum diperiksa', [r.providerNotes, ...(r.evidences || []).map((e: any) => e.url)].filter(Boolean).join('\n')]))); }
+    const items = responses.filter((r: any) => r.criterion?.category?.code === category).sort((a: any, b: any) => (a.criterion?.sortOrder || 0) - (b.criterion?.sortOrder || 0));
+    if (items.length) {
+      const auditItems = items.map((r: any) => {
+        const audit = (application.auditResults || []).find((item: any) => item.section === category && item.criterion === r.criterion.title);
+        const result = audit?.result || r.auditorResult || 'Belum diperiksa';
+        const comment = audit?.note || r.auditorNotes;
+        return `${r.criterion.title}: ${result}${comment ? ` — ${comment}` : ''}`;
+      });
+      const evidenceItems = items.map((r: any) => {
+        const evidence = [r.providerNotes, ...(r.evidences || []).map((e: any) => e.url)].filter(Boolean).join(' · ');
+        return `${r.criterion.title}: ${evidence || '-'}`;
+      });
+      sections.push(new Paragraph({ spacing: { before: 300 }, children: [new TextRun({ text: items[0].criterion.category.name, bold: true, size: 21 })] }));
+      sections.push(table(['Kriteria', 'Hasil Audit', 'Bukti / Keterangan'], [[items[0].criterion.category.name, numbered(auditItems), numbered(evidenceItems)]]));
+    }
   }
   sections.push(new Paragraph({ children: [new PageBreak()] }));
   sections.push(new Paragraph({ children: [new TextRun({ text: 'RINGKASAN HASIL PEMERIKSAAN DAN RENCANA TINDAK LANJUT', bold: true, size: 24 })] }));
