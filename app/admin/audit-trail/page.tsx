@@ -1,0 +1,6 @@
+import { prisma } from '@/lib/prisma';
+
+export default async function AuditTrailPage() {
+  const logs = await prisma.auditLog.findMany({ include: { actor: true, pengajuan: { select: { auditNumber: true, companyName: true } } }, orderBy: { createdAt: 'desc' }, take: 100 });
+  return <div className="space-y-6"><div><p className="mb-2 text-xs font-bold text-[#08725b]">Administrasi LPH UNEJ</p><h1 className="display-font text-3xl font-extrabold tracking-[-.05em] text-[#10211e]">Audit Trail</h1><p className="mt-1 text-sm text-[#71847f]">Riwayat aktivitas dan perubahan pada sistem audit.</p></div><section className="overflow-hidden rounded-2xl border border-[#e2eeeb] bg-white"><div className="divide-y divide-[#edf3f1]">{logs.length === 0 ? <div className="p-12 text-center text-sm text-[#71847f]">Belum ada aktivitas tercatat.</div> : logs.map(log => <div key={log.id} className="px-5 py-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold text-[#234940]">{log.description}</p><p className="mt-1 text-[10px] text-[#71847f]">{log.pengajuan.auditNumber} · {log.pengajuan.companyName} · oleh {log.actor.name}</p></div><time className="text-[10px] text-[#8a9b97]">{new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(log.createdAt)}</time></div></div>)}</div></section></div>;
+}
