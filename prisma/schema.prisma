@@ -62,6 +62,19 @@ model Pengajuan {
   auditLogs       AuditLog[]
   notifications   Notification[]
   reports         Report[]
+  officials       PengajuanOfficial[]
+}
+
+model PengajuanOfficial {
+  id          String    @id @default(cuid())
+  pengajuanId String
+  pengajuan   Pengajuan @relation(fields: [pengajuanId], references: [id], onDelete: Cascade)
+  name        String
+  title       String?
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  @@index([pengajuanId])
 }
 
 model AuditAssignment {
