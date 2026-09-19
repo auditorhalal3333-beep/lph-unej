@@ -1,58 +1,182 @@
-import { Document, HeadingLevel, PageBreak, Paragraph, Table, TableCell, TableRow, TextRun, WidthType, BorderStyle, ShadingType, AlignmentType } from 'docx';
+import {
+  AlignmentType,
+  BorderStyle,
+  Document,
+  HeadingLevel,
+  PageBreak,
+  Paragraph,
+  ShadingType,
+  Table,
+  TableCell,
+  TableRow,
+  TextRun,
+  VerticalAlign,
+  WidthType,
+} from 'docx';
 import { ingredientDescription } from './domain';
 
-const cell = (text: string, width: number, bold = false) => new TableCell({ width: { size: width, type: WidthType.DXA }, children: [new Paragraph({ children: [new TextRun({ text: text || '-', bold, size: 18 })] })] });
-const table = (headers: string[], rows: string[][]) => new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: headers.map(() => Math.floor(9360 / headers.length)), rows: [new TableRow({ tableHeader: true, children: headers.map(h => cell(h, Math.floor(9360 / headers.length), true)) }), ...rows.map(row => new TableRow({ children: row.map(value => cell(value, Math.floor(9360 / headers.length))) }))] });
-const numbered = (items: string[]) => items.filter(Boolean).map((item, index) => `${index + 1}) ${item}`).join('\n');
+const PAGE_WIDTH = 9360;
+const FONT = 'Cambria';
+const small = 17;
+const normal = 19;
+const heading = 24;
+
+type CellOptions = {
+  bold?: boolean;
+  shade?: string;
+  align?: typeof AlignmentType[keyof typeof AlignmentType];
+  vertical?: typeof VerticalAlign[keyof typeof VerticalAlign];
+};
+
+function paragraphs(text: string, options: CellOptions = {}) {
+  const lines = String(text || '-').split('\n');
+  return lines.map((line) => new Paragraph({
+    alignment: options.align,
+    spacing: { after: 40, line: 240 },
+    children: [new TextRun({ text: line || ' ', bold: options.bold, font: FONT, size: small })],
+  }));
+}
+
+function cell(text: string, width: number, options: CellOptions = {}) {
+  return new TableCell({
+    width: { size: width, type: WidthType.DXA },
+    verticalAlign: options.vertical === VerticalAlign.CENTER ? VerticalAlign.CENTER : VerticalAlign.TOP,
+    shading: options.shade ? { type: ShadingType.CLEAR, fill: options.shade } : undefined,
+    margins: { top: 80, bottom: 80, left: 100, right: 100 },
+    children: paragraphs(text, options),
+  });
+}
+
+function reportTable(headers: string[], rows: string[][], widths?: number[]) {
+  const columnWidths = widths || headers.map(() => Math.floor(PAGE_WIDTH / headers.length));
+  const borders = {
+    top: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+    bottom: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+    left: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+    right: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+    insideHorizontal: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+    insideVertical: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+  };
+  return new Table({
+    width: { size: PAGE_WIDTH, type: WidthType.DXA },
+    columnWidths,
+    borders,
+    rows: [
+      new TableRow({ tableHeader: true, children: headers.map((header, index) => cell(header, columnWidths[index], { bold: true, shade: 'D9E1E2', align: AlignmentType.CENTER })) }),
+      ...rows.map((row) => new TableRow({ cantSplit: true, children: row.map((value, index) => cell(value, columnWidths[index])) })),
+    ],
+  });
+}
+
+function title(text: string, size = heading) {
+  return new Paragraph({
+    spacing: { before: 180, after: 120 },
+    children: [new TextRun({ text, bold: true, font: FONT, size })],
+  });
+}
+
+function centeredTitle(text: string, size: number) {
+  return new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 100 }, children: [new TextRun({ text, bold: true, font: FONT, size })] });
+}
+
+function numbered(items: string[]) {
+  return items.filter(Boolean).map((item, index) => `${index + 1}) ${item}`).join('\n');
+}
+
+function dateText(value: unknown) {
+  return value ? new Date(String(value)).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
+}
+
+function officialsText(application: any) {
+  const officials = application.officials?.length ? application.officials : [{ name: application.companyOfficialName || application.ownerName || '-', title: null }];
+  return officials.map((official: any, index: number) => `${index + 1}. ${official.name}${official.title ? ` (${official.title})` : ''}`).join('\n');
+}
+
+function auditorText(application: any) {
+  return application.assignments?.length
+    ? application.assignments.map((assignment: any, index: number) => `${index + 1}. ${assignment.auditorName || assignment.auditor?.name || '-'}${assignment.auditorTitle ? `, ${assignment.auditorTitle}` : ''}`).join('\n')
+    : '-';
+}
+
+function evidenceText(response: any) {
+  const evidence = [response?.providerNotes, ...(response?.evidences || []).map((item: any) => item.fileName ? `${item.fileName}: ${item.url}` : item.url)].filter(Boolean);
+  return evidence.length ? evidence.join('\n') : 'Belum diisi oleh penyelia';
+}
+
+function resultText(category: any, criteria: any[], results: any[]) {
+  const labels: Record<string, string> = { SESUAI: 'Sesuai', PERLU_PERBAIKAN: 'Perlu Perbaikan', TIDAK_SESUAI: 'Tidak Sesuai', TIDAK_BERLAKU: 'Tidak Berlaku' };
+  return criteria.map((criterion: any, index: number) => {
+    const audit = results.find((item: any) => item.section === category.code && item.criterion === criterion.title);
+    const response = criterion.response;
+    const result = audit?.result || response?.auditorResult;
+    const note = audit?.note || response?.auditorNotes;
+    return `${index + 1}) ${labels[result] || 'Belum diperiksa'}${note ? ` — ${note}` : ''}`;
+  }).join('\n');
+}
 
 export function buildAuditReport(application: any) {
-  const sections: (Paragraph | Table)[] = [
-    new Paragraph({ heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'LAPORAN HASIL AUDIT HALAL', bold: true, size: 30 })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'LEMBAGA PEMERIKSA HALAL UNIVERSITAS JEMBER', bold: true, size: 20 })] }),
-    new Paragraph({ spacing: { before: 500, after: 100 }, children: [new TextRun({ text: 'Nomor Audit: ', bold: true }), new TextRun(application.auditNumber)] }),
-    new Paragraph(`Nama Pabrik / Usaha: ${application.factoryName || application.companyName}`),
-    new Paragraph(`Nama Perusahaan: ${application.companyName}`),
-    new Paragraph(`Alamat: ${application.address}`),
-    new Paragraph(`NIB: ${application.nib || '-'}`),
-    new Paragraph(`STTD: ${application.sttd || '-'}`),
-    new Paragraph(`Tanggal Audit: ${application.auditDate ? new Date(application.auditDate).toLocaleDateString('id-ID') : '-'}`),
-    new Paragraph(`Auditor: ${application.assignments?.map((a: any) => `${a.auditorName || a.auditor?.name || '-'}${a.auditorTitle ? `, ${a.auditorTitle}` : ''}`).join('; ') || '-'}`),
-    new Paragraph(`Ketua LPH: ${application.leadLphName || '-'}`),
-    new Paragraph(`Auditee: ${application.companyName || '-'}`),
-    new Paragraph(`Nama Pejabat Perusahaan: ${(application.officials?.length ? application.officials.map((o: any) => o.title ? `${o.name} (${o.title})` : o.name).join('; ') : application.companyOfficialName || application.ownerName || '-')}`),
-    new Paragraph(`Jenis Pendaftaran: ${application.registrationType || '-'}`),
-    new Paragraph(`Kelompok Produk: ${application.productGroup || '-'}`),
-    new Paragraph({ spacing: { before: 500 }, children: [new TextRun({ text: 'DAFTAR PRODUK', bold: true, size: 24 })] }),
-    table(['No.', 'Nama Produk', 'Jenis Produk', 'Kode Produksi'], (application.products || []).map((p: any, i: number) => [String(i + 1), p.name, p.type, p.productionCode || '-'])),
-    new Paragraph({ children: [new PageBreak()] }),
-    new Paragraph({ children: [new TextRun({ text: 'DAFTAR BAHAN', bold: true, size: 24 })] }),
-    table(['No.', 'Bahan', 'Diragukan', 'Temuan', 'Keterangan'], (application.ingredients || []).map((item: any, i: number) => [String(i + 1), item.name, item.hasSH ? 'V' : '-', '-', ingredientDescription(item)])),
-    new Paragraph({ children: [new PageBreak()] }),
-    new Paragraph({ children: [new TextRun({ text: 'IMPLEMENTASI SJPH', bold: true, size: 24 })] }),
-  ];
+  const sections: (Paragraph | Table)[] = [];
+  const factory = application.factoryName || application.companyName || '-';
+  const address = application.address || '-';
+  const categories = application.sjphCategories?.length
+    ? application.sjphCategories
+    : ['KOMITMEN', 'BAHAN', 'PROSES', 'PRODUK', 'EVALUASI'].map((code, index) => ({ code, name: code, sortOrder: index }));
   const responses = application.sjphResponses || [];
-  const resultLabel: Record<string, string> = { SESUAI: 'Sesuai', PERLU_PERBAIKAN: 'Perlu Perbaikan', TIDAK_SESUAI: 'Tidak Sesuai', TIDAK_BERLAKU: 'Tidak Berlaku' };
-  for (const category of ['KOMITMEN', 'BAHAN', 'PROSES', 'PRODUK', 'EVALUASI']) {
-    const items = responses.filter((r: any) => r.criterion?.category?.code === category).sort((a: any, b: any) => (a.criterion?.sortOrder || 0) - (b.criterion?.sortOrder || 0));
-    if (items.length) {
-      const audits = items.map((r: any) => (application.auditResults || []).find((item: any) => item.section === category && item.criterion === r.criterion.title) || r);
-      const counts = audits.reduce((summary: Record<string, number>, audit: any) => { const key = resultLabel[audit?.result || audit?.auditorResult] || 'Belum diperiksa'; summary[key] = (summary[key] || 0) + 1; return summary; }, {});
-      const statusSummary = Object.entries(counts).map(([label, count]) => `${label}: ${count}`).join('; ');
-      const comments = [...new Set(audits.map((audit: any) => audit?.note || audit?.auditorNotes).filter(Boolean))] as string[];
-      const auditItems = [statusSummary || 'Belum diperiksa', ...comments];
-      const evidenceItems = items.map((r: any) => {
-        const evidence = [r.providerNotes, ...(r.evidences || []).map((e: any) => e.url)].filter(Boolean);
-        return `${r.criterion.title}: ${evidence.length ? evidence.join(' · ') : 'Belum diisi'}`;
-      });
-      sections.push(new Paragraph({ spacing: { before: 300 }, children: [new TextRun({ text: items[0].criterion.category.name, bold: true, size: 21 })] }));
-      sections.push(table(['Kriteria', 'Hasil Audit', 'Bukti / Keterangan'], [[items[0].criterion.category.name, numbered(auditItems), numbered(evidenceItems)]]));
-    }
-  }
+  const auditResults = application.auditResults || [];
+
+  sections.push(centeredTitle('LAPORAN HASIL AUDIT HALAL', 30));
+  sections.push(centeredTitle('LEMBAGA PEMERIKSA HALAL UNIVERSITAS JEMBER', 20));
+  sections.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { before: 300, after: 180, line: 280 }, children: [new TextRun({ font: FONT, size: normal, text: `Dengan ini dilaporkan hasil pemeriksaan/auditing oleh Tim LPH UNEJ pada ${factory} yang beralamat di ${address}.` })] }));
+  sections.push(reportTable(['Data Pengajuan', 'Keterangan'], [
+    ['Nomor Audit', application.auditNumber || '-'],
+    ['Nama Pabrik / Usaha', factory],
+    ['Nama Perusahaan', application.companyName || '-'],
+    ['Alamat Pabrik', address],
+    ['Tanggal Audit', dateText(application.auditDate)],
+    ['NIB', application.nib || '-'],
+    ['STTD', application.sttd || '-'],
+    ['Auditor', auditorText(application)],
+    ['Nama Pejabat Perusahaan', officialsText(application)],
+  ], [2600, 6760]));
+  sections.push(new Paragraph({ spacing: { before: 260, after: 260 }, children: [new TextRun({ text: `STATUS PENDAFTARAN: ${application.registrationType || 'SERTIFIKASI BARU'}`, bold: true, font: FONT, size: normal })] }));
+  sections.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 300, after: 120 }, children: [new TextRun({ text: `Jember, ${dateText(application.auditDate)}`, font: FONT, size: normal })] }));
+  sections.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 500 }, children: [new TextRun({ text: 'Pimpinan LPH\n\n\n____________________________', bold: true, font: FONT, size: normal })] }));
+
   sections.push(new Paragraph({ children: [new PageBreak()] }));
-  sections.push(new Paragraph({ children: [new TextRun({ text: 'RINGKASAN HASIL PEMERIKSAAN DAN RENCANA TINDAK LANJUT', bold: true, size: 24 })] }));
-  sections.push(table(['No.', 'Temuan', 'Perbaikan', 'Status'], (application.temuan || []).map((f: any, i: number) => [String(i + 1), f.description, (f.fixes || []).map((x: any) => x.notes || x.evidenceUrl).join('\n') || '-', f.status])));
-  sections.push(new Paragraph({ spacing: { before: 700 }, children: [new TextRun({ text: 'TANDA TANGAN', bold: true, size: 22 })] }));
-  const officialNames = application.officials?.length ? application.officials.map((o: any) => `${o.name}${o.title ? ` (${o.title})` : ''}`).join('\n') : (application.companyOfficialName || application.ownerName || '-');
-  sections.push(table(['Auditee / Pejabat Perusahaan', 'Ketua LPH / Auditor'], [[`Nama:\n${officialNames}\n\nTanda tangan: ____________________`, `Ketua LPH: ${application.leadLphName || '-'}\nAuditor: ${application.assignments?.map((a: any) => a.auditorName || a.auditor?.name || '-').join('; ') || '-'}\n\nTanda tangan: ____________________`]]));
+  sections.push(title(`Kelompok Produk: ${application.productGroup || '-'}`));
+  sections.push(title('Daftar Produk', 21));
+  sections.push(reportTable(['No.', 'Nama Produk', 'Jenis Produk', 'Kode Produksi'], (application.products || []).map((product: any, index: number) => [String(index + 1), product.name, product.type || '-', product.productionCode || '-']), [700, 3900, 3000, 1760]));
+  sections.push(title('Daftar Bahan', 21));
+  sections.push(reportTable(['No.', 'Bahan', 'Diragukan', 'Temuan / Sertifikat', 'Keterangan'], (application.ingredients || []).map((item: any, index: number) => [String(index + 1), item.name, item.hasSH ? 'V' : '-', item.hasSH ? `SH BPJPH No. ${item.shNumber || '-'}` : '-', ingredientDescription(item)]), [600, 2500, 1200, 2800, 2260]));
+
+  sections.push(new Paragraph({ children: [new PageBreak()] }));
+  sections.push(centeredTitle('IMPLEMENTASI SJPH', 24));
+  sections.push(new Paragraph({ spacing: { after: 150 }, children: [new TextRun({ text: address, font: FONT, size: normal })] }));
+  const sjphRows = categories.map((category: any) => {
+    const categoryResponses = responses.filter((response: any) => response.criterion?.category?.code === category.code);
+    const criteria = (category.criteria || []).map((criterion: any) => ({ ...criterion, response: responses.find((response: any) => response.criterionId === criterion.id) }));
+    const usableCriteria = criteria.length ? criteria : categoryResponses.map((response: any) => ({ ...response.criterion, response }));
+    return [
+      category.name || category.code,
+      numbered(usableCriteria.map((criterion: any) => criterion.title)),
+      resultText(category, usableCriteria, auditResults),
+      numbered(usableCriteria.map((criterion: any) => evidenceText(criterion.response))),
+    ];
+  });
+  sections.push(reportTable(['Kriteria', 'Hasil Audit', 'Status / Catatan Auditor', 'Bukti/Keterangan'], sjphRows, [1900, 2500, 2500, 2460]));
+
+  sections.push(new Paragraph({ children: [new PageBreak()] }));
+  sections.push(title('RINGKASAN HASIL PEMERIKSAAN DAN RENCANA TINDAK LANJUT', 24));
+  sections.push(new Paragraph({ children: [new TextRun({ text: '(disampaikan saat closing meeting)', italics: true, font: FONT, size: normal })] }));
+  sections.push(reportTable(['Auditor Halal / Catatan Closing Meeting'], [[auditResults.map((item: any) => item.note).filter(Boolean).filter((value: string, index: number, values: string[]) => values.indexOf(value) === index).join('\n') || 'Belum ada catatan closing meeting.']], [9360]));
+  const findingRows = (application.temuan || []).map((finding: any, index: number) => {
+    const fixes = (finding.fixes || []).map((fix: any) => `${fix.notes || 'Perbaikan'}${fix.evidenceUrl ? `\n${fix.evidenceUrl}` : ''}`).join('\n') || '-';
+    const verification = (finding.verifications || []).map((item: any) => `${item.result}${item.note ? `: ${item.note}` : ''}`).join('\n');
+    return [String(index + 1), finding.description, fixes, verification || finding.status || 'OPEN'];
+  });
+  sections.push(reportTable(['No.', 'Temuan', 'Perbaikan', 'Status / Verifikasi'], findingRows.length ? findingRows : [['-', 'Belum ada temuan yang dicatat.', '-', '-']], [600, 3700, 3000, 2060]));
+  sections.push(new Paragraph({ spacing: { before: 350 }, children: [new TextRun({ text: `Jember, ${dateText(application.auditDate)}`, font: FONT, size: normal })] }));
+  sections.push(reportTable(['Lead Auditor / Ketua LPH', 'Auditee / Pejabat Perusahaan'], [[`Ketua LPH: ${application.leadLphName || '-'}\nAuditor:\n${auditorText(application)}\n\nTanda tangan:\n\n____________________________`, `Nama:\n${officialsText(application)}\n\nTanda tangan:\n\n____________________________`]], [4680, 4680]));
+
   return new Document({ sections: [{ properties: { page: { margin: { top: 720, right: 720, bottom: 720, left: 720 } } }, children: sections }] });
 }
