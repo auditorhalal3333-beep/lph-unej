@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 type Application = { id: string; auditNumber: string; companyName: string; factoryName: string; ownerName: string; type: string; status: string; products: unknown[]; ingredients: unknown[]; temuan: unknown[]; assignments: { auditor: { id: string; name: string; email: string; role: string }; auditorName?: string | null; auditorTitle?: string | null; notes?: string | null }[] };
-type Auditor = { id: string; name: string; email: string; role: string };
+type Auditor = { id: string; name: string; email: string; role: string; title?: string | null; active?: boolean };
 
 const statusLabel: Record<string, string> = { DRAFT: 'Draft', DIAJUKAN: 'Diajukan', MENUNGGU_REVIEW: 'Menunggu Review', MENUNGGU_AUDITOR: 'Menunggu Auditor', SEDANG_DIAUDIT: 'Sedang Diaudit', PERLU_PERBAIKAN: 'Perlu Perbaikan', MENUNGGU_VERIFIKASI: 'Menunggu Verifikasi', SELESAI: 'Selesai' };
 const nextActions: Record<string, { status: string; label: string; description: string }[]> = {
