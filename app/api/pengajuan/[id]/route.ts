@@ -19,7 +19,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await params;
   if (!(await canAccessApplication(user.id, user.role, id))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  const parsed = applicationSchema.partial().safeParse(await req.json());
+  const body = await req.json();
+  if (Object.keys(body).some((key) => key === 'leadLphName') && !['ADMIN', 'SUPER_ADMIN', 'AUDITOR'].includes(user.role)) return NextResponse.json({ error: 'Hanya tim audit yang dapat mengisi Ketua LPH.' }, { status: 403 });
+  const parsed = applicationSchema.partial().safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Data tidak valid.' }, { status: 400 });
   const updated = await prisma.pengajuan.update({ where: { id }, data: parsed.data });
   await writeAuditLog(id, user.id, 'APPLICATION_UPDATED', 'Data pengajuan diperbarui.');

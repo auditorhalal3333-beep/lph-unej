@@ -19,7 +19,6 @@ export async function POST(req: Request) {
   const results = Array.isArray(body.results) ? body.results : body.criterion ? [{ criterion: body.criterion, result: body.result, note: body.note }] : [];
   const allowed = ['SESUAI', 'TIDAK_SESUAI', 'PERLU_PERBAIKAN', 'TIDAK_BERLAKU'];
   if (!results.length || results.some((item: { criterion?: string; result?: string }) => !item.criterion || !allowed.includes(item.result ?? ''))) return NextResponse.json({ error: 'Hasil audit belum lengkap.' }, { status: 400 });
-  if (results.some((item: { result: string; note?: string }) => item.result !== 'SESUAI' && item.result !== 'TIDAK_BERLAKU' && !item.note?.trim())) return NextResponse.json({ error: 'Catatan wajib diisi untuk hasil yang tidak sesuai.' }, { status: 400 });
   await prisma.$transaction(async tx => {
     for (const item of results) {
       await tx.auditResult.upsert({

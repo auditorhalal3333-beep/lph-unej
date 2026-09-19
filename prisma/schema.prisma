@@ -46,6 +46,8 @@ model Pengajuan {
   productGroup    String?
   supervisor      String?
   contact         String?
+  companyOfficialName String?
+  leadLphName     String?
   auditDate       DateTime?
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt

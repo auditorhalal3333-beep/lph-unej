@@ -17,6 +17,8 @@ export const applicationSchema = z.object({
   productGroup: z.string().optional(),
   supervisor: z.string().optional(),
   contact: z.string().optional(),
+  companyOfficialName: z.string().trim().optional(),
+  leadLphName: z.string().trim().optional(),
 });
 
 export const productSchema = z.object({

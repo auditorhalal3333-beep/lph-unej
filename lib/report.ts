@@ -17,6 +17,9 @@ export function buildAuditReport(application: any) {
     new Paragraph(`STTD: ${application.sttd || '-'}`),
     new Paragraph(`Tanggal Audit: ${application.auditDate ? new Date(application.auditDate).toLocaleDateString('id-ID') : '-'}`),
     new Paragraph(`Auditor: ${application.assignments?.map((a: any) => `${a.auditorName || a.auditor?.name || '-'}${a.auditorTitle ? `, ${a.auditorTitle}` : ''}`).join('; ') || '-'}`),
+    new Paragraph(`Ketua LPH: ${application.leadLphName || '-'}`),
+    new Paragraph(`Auditee: ${application.companyName || '-'}`),
+    new Paragraph(`Nama Pejabat Perusahaan: ${application.companyOfficialName || application.ownerName || '-'}`),
     new Paragraph(`Jenis Pendaftaran: ${application.registrationType || '-'}`),
     new Paragraph(`Kelompok Produk: ${application.productGroup || '-'}`),
     new Paragraph({ spacing: { before: 500 }, children: [new TextRun({ text: 'DAFTAR PRODUK', bold: true, size: 24 })] }),
@@ -48,7 +51,7 @@ export function buildAuditReport(application: any) {
   sections.push(new Paragraph({ children: [new PageBreak()] }));
   sections.push(new Paragraph({ children: [new TextRun({ text: 'RINGKASAN HASIL PEMERIKSAAN DAN RENCANA TINDAK LANJUT', bold: true, size: 24 })] }));
   sections.push(table(['No.', 'Temuan', 'Perbaikan', 'Status'], (application.temuan || []).map((f: any, i: number) => [String(i + 1), f.description, (f.fixes || []).map((x: any) => x.notes || x.evidenceUrl).join('\n') || '-', f.status])));
-  sections.push(new Paragraph({ spacing: { before: 700 }, children: [new TextRun({ text: 'Auditor / Tim Pemeriksa: ________________________________', size: 20 })] }));
-  sections.push(new Paragraph({ children: [new TextRun({ text: 'Penyelia / Penanggung Jawab: ___________________________', size: 20 })] }));
+  sections.push(new Paragraph({ spacing: { before: 700 }, children: [new TextRun({ text: 'TANDA TANGAN', bold: true, size: 22 })] }));
+  sections.push(table(['Auditee / Pejabat Perusahaan', 'Ketua LPH / Auditor'], [[`Nama: ${application.companyOfficialName || application.ownerName || '-'}\n\nTanda tangan: ____________________`, `Ketua LPH: ${application.leadLphName || '-'}\nAuditor: ${application.assignments?.map((a: any) => a.auditorName || a.auditor?.name || '-').join('; ') || '-'}\n\nTanda tangan: ____________________`]]));
   return new Document({ sections: [{ properties: { page: { margin: { top: 720, right: 720, bottom: 720, left: 720 } } }, children: sections }] });
 }
