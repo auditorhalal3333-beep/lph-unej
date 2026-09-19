@@ -79,6 +79,7 @@ export default function AuditWorkspace() {
   const [auditorName, setAuditorName] = useState("");
   const [auditorTitle, setAuditorTitle] = useState("");
   const [leadLphName, setLeadLphName] = useState("");
+  const [chairs, setChairs] = useState<any[]>([]);
   const [selectedOfficialId, setSelectedOfficialId] = useState("");
   const [identityMessage, setIdentityMessage] = useState("");
   const [categories, setCategories] = useState<any[]>([]);
@@ -89,9 +90,10 @@ export default function AuditWorkspace() {
     >
   >({});
   async function load() {
-    const [res, cres] = await Promise.all([
+    const [res, cres, staffRes] = await Promise.all([
       fetch(`/api/pengajuan/${id}`),
       fetch(`/api/sjph/criteria?pengajuanId=${id}`),
+      fetch('/api/admin/staff'),
     ]);
     if (res.ok) {
       const data = await res.json();
@@ -107,6 +109,7 @@ export default function AuditWorkspace() {
       setSelectedOfficialId(data.officials?.[0]?.id || "");
     }
     if (cres.ok) setCategories(await cres.json());
+    if (staffRes.ok) { const staff = await staffRes.json(); setChairs(staff.chairs || []); }
   }
   useEffect(() => {
     load();
@@ -504,8 +507,8 @@ export default function AuditWorkspace() {
             <div className="rounded-xl border border-[#dce9e5] bg-[#fbfdfc] p-4">
               <p className="text-[10px] font-bold text-[#8a9b97]">KETUA LPH</p>
               <div className="mt-2 flex flex-wrap gap-3">
+                <select value={chairs.some((chair) => `${chair.name}${chair.title ? `, ${chair.title}` : ''}` === leadLphName) ? leadLphName : ''} onChange={(e) => setLeadLphName(e.target.value)} className="h-10 min-w-0 flex-1 rounded-xl border border-[#dce9e5] bg-white px-3 text-xs outline-none focus:border-[#0a8065]"><option value="">Pilih Ketua LPH</option>{chairs.filter((chair) => chair.active).map((chair) => <option key={chair.id} value={`${chair.name}${chair.title ? `, ${chair.title}` : ''}`}>{chair.name}{chair.title ? ` · ${chair.title}` : ''}</option>)}</select>
                 <input
-                  value={leadLphName}
                   onChange={(e) => setLeadLphName(e.target.value)}
                   placeholder="Nama Ketua LPH"
                   className="h-10 min-w-0 flex-1 rounded-xl border border-[#dce9e5] bg-white px-3 text-xs outline-none focus:border-[#0a8065]"

@@ -13,6 +13,8 @@ model User {
   password            String
   name                String
   role                String             @default("PENYELIA")
+  title               String?
+  active              Boolean            @default(true)
   phone               String?
   company             String?
   createdAt           DateTime           @default(now())
@@ -22,6 +24,17 @@ model User {
   auditLogs           AuditLog[]
   notifications       Notification[]
   uploadedEvidences   Evidence[]
+}
+
+model LphSignatory {
+  id          String   @id @default(cuid())
+  name        String
+  title       String?
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([active, sortOrder])
 }
 
 model Pengajuan {

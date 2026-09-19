@@ -13,7 +13,7 @@ export async function POST(req: Request) {
 
   const [application, auditor] = await Promise.all([
     prisma.pengajuan.findUnique({ where: { id: body.pengajuanId } }),
-    prisma.user.findFirst({ where: { id: body.auditorId, role: { in: ['AUDITOR', 'ADMIN'] } } }),
+    prisma.user.findFirst({ where: { id: body.auditorId, role: { in: ['AUDITOR', 'ADMIN'] }, active: true } }),
   ]);
   if (!application) return NextResponse.json({ error: 'Pengajuan tidak ditemukan.' }, { status: 404 });
   if (!auditor) return NextResponse.json({ error: 'Auditor tidak ditemukan.' }, { status: 404 });
@@ -58,7 +58,7 @@ export async function GET(req: Request) {
   const user = await getCurrentUser();
   if (!user || !adminRoles.includes(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const pengajuanId = new URL(req.url).searchParams.get('pengajuanId');
-  const auditors = await prisma.user.findMany({ where: { role: { in: ['AUDITOR', 'ADMIN'] } }, select: { id: true, name: true, email: true, role: true }, orderBy: { name: 'asc' } });
+  const auditors = await prisma.user.findMany({ where: { role: { in: ['AUDITOR', 'ADMIN'] }, active: true }, select: { id: true, name: true, email: true, role: true, title: true, active: true }, orderBy: { name: 'asc' } });
   if (!pengajuanId) return NextResponse.json(auditors);
   const assignments = await prisma.auditAssignment.findMany({ where: { pengajuanId }, include: { auditor: { select: { id: true, name: true, email: true, role: true } } }, orderBy: { assignedAt: 'desc' } });
   return NextResponse.json({ auditors, assignments });
