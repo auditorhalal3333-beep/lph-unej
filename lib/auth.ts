@@ -7,7 +7,7 @@ export type AppRole = 'SUPER_ADMIN' | 'ADMIN' | 'AUDITOR' | 'PENYELIA';
 export async function getCurrentUser() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return null;
-  return prisma.user.findUnique({ where: { id: session.user.id } });
+  return prisma.user.findUnique({ where: { id: session.user.id }, select: { id: true, email: true, password: true, name: true, role: true, phone: true, company: true, createdAt: true, updatedAt: true } });
 }
 
 export async function requireUser() {
