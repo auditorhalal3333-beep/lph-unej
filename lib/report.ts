@@ -15,11 +15,13 @@ import { ingredientDescription } from './domain';
 
 const WIDTH = 9360;
 const FONT = 'Cambria';
+const FONT_SIZE = 24; // 12 pt in OOXML half-points
+const LINE = 276; // 1.15 line spacing
 const text = (value: unknown) => String(value ?? '').trim() || '-';
 const dateText = (value: unknown) => value ? new Date(String(value)).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
 
-function line(value: unknown, bold = false, size = 19) {
-  return new Paragraph({ spacing: { after: 35, line: 240 }, children: [new TextRun({ text: text(value), font: FONT, size, bold })] });
+function line(value: unknown, bold = false, size = FONT_SIZE) {
+  return new Paragraph({ spacing: { after: 0, line: LINE }, children: [new TextRun({ text: text(value), font: FONT, size, bold })] });
 }
 
 function multiline(value: unknown, bold = false) {
@@ -68,12 +70,31 @@ function valueTable(rows: [string, string][]) {
   });
 }
 
-function centered(value: string, size: number, before = 0, after = 100) {
-  return new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before, after }, children: [new TextRun({ text: value, font: FONT, size, bold: true })] });
+function boxed(value: string) {
+  const borders = {
+    top: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+    bottom: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+    left: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+    right: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+    insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+  };
+  return new Table({
+    width: { size: WIDTH, type: WidthType.DXA }, columnWidths: [WIDTH], borders,
+    rows: [new TableRow({ children: [cell(value, WIDTH, true)] })],
+  });
+}
+
+function centered(value: string, bold = true) {
+  return new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0, line: LINE }, children: [new TextRun({ text: value, font: FONT, size: FONT_SIZE, bold })] });
+}
+
+function blank(lines = 1) {
+  return Array.from({ length: lines }, () => new Paragraph({ spacing: { before: 0, after: 0, line: LINE }, children: [new TextRun({ text: '', font: FONT, size: FONT_SIZE })] }));
 }
 
 function sectionTitle(value: string) {
-  return new Paragraph({ spacing: { before: 180, after: 100 }, children: [new TextRun({ text: value, font: FONT, size: 24, bold: true })] });
+  return new Paragraph({ spacing: { before: 0, after: 0, line: LINE }, children: [new TextRun({ text: value, font: FONT, size: FONT_SIZE, bold: true })] });
 }
 
 function numbered(values: string[]) {
@@ -104,9 +125,12 @@ export function buildAuditReport(application: any) {
   const results = application.auditResults || [];
   const categories = application.sjphCategories?.length ? application.sjphCategories : ['KOMITMEN', 'BAHAN', 'PROSES', 'PRODUK', 'EVALUASI'].map((code, sortOrder) => ({ code, name: code, sortOrder, criteria: [] }));
 
-  sections.push(centered('LAPORAN HASIL AUDIT HALAL', 30, 0, 100));
-  sections.push(centered('LEMBAGA PEMERIKSA HALAL UNIVERSITAS JEMBER', 20, 0, 300));
-  sections.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { after: 150, line: 280 }, children: [new TextRun({ text: `Dengan ini dilaporkan hasil pemeriksaan/auditing oleh Tim LPH UNEJ pada ${factory} yang beralamat di ${address}.`, font: FONT, size: 19 })] }));
+  sections.push(centered('LAPORAN HASIL AUDIT HALAL'));
+  sections.push(...blank(2));
+  sections.push(centered('LEMBAGA PEMERIKSA HALAL UNIVERSITAS JEMBER'));
+  sections.push(...blank(1));
+  sections.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { after: 0, line: LINE }, children: [new TextRun({ text: `Dengan ini dilaporkan hasil pemeriksaan/auditing oleh Tim LPH UNEJ pada ${factory} yang beralamat di ${address}.`, font: FONT, size: FONT_SIZE })] }));
+  sections.push(...blank(1));
   sections.push(valueTable([
     ['Nama Pabrik', factory],
     ['Alamat Pabrik', address],
@@ -116,40 +140,47 @@ export function buildAuditReport(application: any) {
     ['Auditor', auditorNames(application)],
     ['Nama Pejabat\nPerusahaan', officialNames(application)],
   ]));
-  sections.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 180, after: 220 }, children: [new TextRun({ text: `STATUS PENDAFTARAN: ${text(application.registrationType || 'SERTIFIKASI BARU')}`, font: FONT, size: 19, bold: true })] }));
-  sections.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 250, after: 60 }, children: [new TextRun({ text: `Jember, ${dateText(application.auditDate)}`, font: FONT, size: 19 })] }));
-  sections.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 100 }, children: [new TextRun({ text: 'Pimpinan LPH', font: FONT, size: 19, bold: true })] }));
-  sections.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 100 }, children: [new TextRun({ text: '\n\n____________________________', font: FONT, size: 19 })] }));
+  sections.push(...blank(3));
+  sections.push(boxed(`STATUS PENDAFTARAN: ${text(application.registrationType || 'SERTIFIKASI BARU')}`));
+  sections.push(...blank(2));
+  sections.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0, line: LINE }, children: [new TextRun({ text: `Jember, ${dateText(application.auditDate)}`, font: FONT, size: FONT_SIZE })] }));
+  sections.push(centered('Pimpinan LPH'));
+  sections.push(...blank(3));
+  sections.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0, line: LINE }, children: [new TextRun({ text: `(${text(application.leadLphName || '................................')})`, font: FONT, size: FONT_SIZE })] }));
 
   sections.push(new Paragraph({ children: [new PageBreak()] }));
-  sections.push(sectionTitle(`Kelompok Produk: ${text(application.productGroup)}`));
-  sections.push(sectionTitle('Daftar Produk'));
-  sections.push(borderedTable(['No.', 'Nama Produk', 'Jenis Produk', 'Kode Produksi'], (application.products || []).map((item: any, index: number) => [String(index + 1), text(item.name), text(item.type), text(item.productionCode)]), [650, 3900, 3000, 1810]));
-  sections.push(sectionTitle('DAFTAR BAHAN'));
-  sections.push(borderedTable(['No.', 'Bahan', 'Diragukan', 'Temuan / Sertifikat', 'Keterangan'], (application.ingredients || []).map((item: any, index: number) => [String(index + 1), text(item.name), item.hasSH ? 'V' : '-', item.hasSH ? `SH BPJPH NO. ${text(item.shNumber)}` : '-', ingredientDescription(item)]), [650, 2600, 1200, 2800, 2110]));
+  sections.push(sectionTitle(`Kelompok Produk\t\t: ${text(application.productGroup)}`));
+  sections.push(...blank(1));
+  sections.push(sectionTitle('Daftar Produk:'));
+  sections.push(borderedTable(['No.', 'Nama Produk', 'Jenis Produk'], (application.products || []).map((item: any, index: number) => [String(index + 1), text(item.name), text(item.type)]), [650, 4450, 4260]));
+  sections.push(...blank(1));
+  sections.push(sectionTitle('DAFTAR BAHAN :'));
+  sections.push(borderedTable(['No.', 'Bahan', 'Diragukan', 'Temuan', 'Keterangan'], (application.ingredients || []).map((item: any, index: number) => [String(index + 1), text(item.name), item.hasSH ? 'V' : '-', item.hasSH ? `SH BPJPH NO. ${text(item.shNumber)}` : '-', text(item.notes || item.producer || item.supplier || ingredientDescription(item))]), [650, 2600, 1200, 2400, 2510]));
 
   sections.push(new Paragraph({ children: [new PageBreak()] }));
-  sections.push(centered('IMPLEMENTASI SJPH', 24, 0, 100));
+  sections.push(centered('IMPLEMENTASI SJPH'));
+  sections.push(...blank(1));
   sections.push(line(address));
   const sjphRows = categories.map((category: any) => {
     const categoryResponses = responses.filter((item: any) => item.criterion?.category?.code === category.code);
     const criteria = (category.criteria || []).map((criterion: any) => ({ ...criterion, response: responses.find((item: any) => item.criterionId === criterion.id) }));
     const actual = criteria.length ? criteria : categoryResponses.map((item: any) => ({ ...item.criterion, response: item }));
+    const categoryTitle = text(category.name || category.code);
     const criteriaText = numbered(actual.map((item: any) => item.title));
     const auditText = actual.map((item: any, index: number) => { const result = results.find((audit: any) => audit.section === category.code && audit.criterion === item.title); const response = item.response; return `${index + 1}) ${resultLabels[result?.result || response?.auditorResult] || 'Belum diperiksa'}${result?.note || response?.auditorNotes ? ` — ${result?.note || response?.auditorNotes}` : ''}`; }).join('\n');
     const evidenceText = numbered(actual.map((item: any) => `${item.title}: ${evidence(item.response)}`));
-    return [text(category.name || category.code), criteriaText || 'Belum ada kriteria', auditText || 'Belum diperiksa', evidenceText || 'Belum diisi oleh penyelia'];
+    return [categoryTitle, criteriaText || 'Belum ada kriteria', auditText || 'Belum diperiksa', evidenceText || 'Belum diisi oleh penyelia'];
   });
   sections.push(borderedTable(['Kriteria', 'Hasil Audit', 'Bukti/keterangan'], sjphRows.map((row: string[]) => [row[0], `${row[1]}\n\n${row[2]}`, row[3]]), [2700, 3200, 3460]));
 
   sections.push(new Paragraph({ children: [new PageBreak()] }));
   sections.push(sectionTitle('RINGKASAN HASIL PEMERIKSAAN DAN RENCANA TINDAK LANJUT'));
-  sections.push(new Paragraph({ children: [new TextRun({ text: '(disampaikan saat closing meeting)', font: FONT, size: 18, italics: true })] }));
+  sections.push(new Paragraph({ spacing: { before: 0, after: 0, line: LINE }, children: [new TextRun({ text: '(disampaikan saat closing meeting)', font: FONT, size: FONT_SIZE, italics: true })] }));
   const comments = [...new Set(results.map((item: any) => item.note).filter(Boolean))].join('\n') || 'Belum ada catatan Auditor Halal.';
   sections.push(borderedTable(['Auditor Halal:'], [[comments]], [WIDTH]));
   const findingRows = (application.temuan || []).map((item: any, index: number) => [String(index + 1), text(item.description), (item.fixes || []).map((fix: any) => `${text(fix.notes)}${fix.evidenceUrl ? `\n${fix.evidenceUrl}` : ''}`).join('\n') || '-', (item.verifications || []).map((verification: any) => `${text(verification.result)}${verification.note ? `: ${verification.note}` : ''}`).join('\n') || text(item.status)]);
   sections.push(borderedTable(['No.', 'Temuan', 'Perbaikan', 'Status'], findingRows.length ? findingRows : [['-', 'Belum ada temuan.', '-', '-']], [650, 3700, 3000, 2010]));
-  sections.push(new Paragraph({ spacing: { before: 300, after: 100 }, children: [new TextRun({ text: `Jember, ${dateText(application.auditDate)}`, font: FONT, size: 19 })] }));
+  sections.push(new Paragraph({ spacing: { before: 0, after: 0, line: LINE }, children: [new TextRun({ text: `Jember, ${dateText(application.auditDate)}`, font: FONT, size: FONT_SIZE })] }));
   sections.push(borderedTable(['Lead Auditor / Ketua LPH', 'Auditee'], [[`Ketua LPH: ${text(application.leadLphName)}\nAuditor:\n${auditorNames(application)}\n\nTanda tangan:\n\n____________________________`, `Nama Pejabat:\n${officialNames(application)}\n\nTanda tangan:\n\n____________________________`]], [4680, 4680]));
 
   return new Document({ sections: [{ properties: { page: { margin: { top: 720, right: 720, bottom: 720, left: 720 } } }, children: sections }] });
