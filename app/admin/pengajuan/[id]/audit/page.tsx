@@ -507,12 +507,7 @@ export default function AuditWorkspace() {
             <div className="rounded-xl border border-[#dce9e5] bg-[#fbfdfc] p-4">
               <p className="text-[10px] font-bold text-[#8a9b97]">KETUA LPH</p>
               <div className="mt-2 flex flex-wrap gap-3">
-                <select value={chairs.some((chair) => `${chair.name}${chair.title ? `, ${chair.title}` : ''}` === leadLphName) ? leadLphName : ''} onChange={(e) => setLeadLphName(e.target.value)} className="h-10 min-w-0 flex-1 rounded-xl border border-[#dce9e5] bg-white px-3 text-xs outline-none focus:border-[#0a8065]"><option value="">Pilih Ketua LPH</option>{chairs.filter((chair) => chair.active).map((chair) => <option key={chair.id} value={`${chair.name}${chair.title ? `, ${chair.title}` : ''}`}>{chair.name}{chair.title ? ` · ${chair.title}` : ''}</option>)}</select>
-                <input
-                  onChange={(e) => setLeadLphName(e.target.value)}
-                  placeholder="Nama Ketua LPH"
-                  className="h-10 min-w-0 flex-1 rounded-xl border border-[#dce9e5] bg-white px-3 text-xs outline-none focus:border-[#0a8065]"
-                />
+                <select value={leadLphName} onChange={(e) => setLeadLphName(e.target.value)} className="h-10 w-full rounded-xl border border-[#dce9e5] bg-white px-3 text-xs outline-none focus:border-[#0a8065]"><option value="">Pilih Ketua LPH</option>{chairs.filter((chair) => chair.active).map((chair) => <option key={chair.id} value={`${chair.name}${chair.title ? `, ${chair.title}` : ''}`}>{chair.name}{chair.title ? ` · ${chair.title}` : ''}</option>)}</select>
                 <button
                   onClick={saveLeadLph}
                   disabled={busy === "lead-lph"}
@@ -524,10 +519,7 @@ export default function AuditWorkspace() {
             </div>
             <div className="rounded-xl border border-[#dce9e5] p-4">
               <p className="text-[10px] font-bold text-[#8a9b97]">AUDITOR</p>
-              <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                <input value={auditorName} onChange={(e) => setAuditorName(e.target.value)} placeholder="Nama auditor" className="h-10 rounded-xl border border-[#dce9e5] px-3 text-xs outline-none focus:border-[#0a8065]" />
-                <input value={auditorTitle} onChange={(e) => setAuditorTitle(e.target.value)} placeholder="Gelar/jabatan (opsional)" className="h-10 rounded-xl border border-[#dce9e5] px-3 text-xs outline-none focus:border-[#0a8065]" />
-              </div>
+              <div className="mt-2 grid gap-3"><input value={auditorName} onChange={(e) => setAuditorName(e.target.value)} placeholder="Nama auditor" className="h-10 rounded-xl border border-[#dce9e5] px-3 text-xs outline-none focus:border-[#0a8065]" /></div>
               <p className="mt-2 text-[10px] text-[#71847f]">Nama auditor diambil dari assignment dan dapat disesuaikan sebelum laporan diterbitkan.</p>
             </div>
             <div className="rounded-xl border border-[#dce9e5] p-4">
