@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 
@@ -19,7 +20,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (name.length < 2 || name.length > 120) return NextResponse.json({ error: 'Nama wajib 2–120 karakter.' }, { status: 400 });
   try {
     if (kind === 'CHAIR') return NextResponse.json(await prisma.lphSignatory.update({ where: { id }, data: { name, title, active } }));
-    return NextResponse.json(await prisma.user.update({ where: { id }, data: { name, title, active }, select: { id: true, name: true, email: true, role: true, title: true, active: true } }));
+    return NextResponse.json(await prisma.user.update({ where: { id }, data: { name, title, active, ...(body.email?.trim() ? { email: String(body.email).trim().toLowerCase() } : {}), ...(body.password?.length ? { password: await bcrypt.hash(String(body.password), 10) } : {}) }, select: { id: true, name: true, email: true, role: true, title: true, active: true } }));
   } catch {
     return NextResponse.json({ error: 'Data tidak ditemukan atau tidak dapat diperbarui.' }, { status: 404 });
   }
