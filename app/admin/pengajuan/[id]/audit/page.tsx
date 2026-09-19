@@ -262,11 +262,23 @@ export default function AuditWorkspace() {
     const all = Object.values(drafts).flatMap((group) =>
       group.items.map((item) => ({ ...item, note: group.comment.trim() })),
     );
-    const res = await fetch("/api/audit-results", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pengajuanId: id, section: "SJPH", results: all }),
-    });
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 30000);
+    let res: Response;
+    try {
+      res = await fetch("/api/audit-results", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pengajuanId: id, section: "SJPH", results: all }),
+        signal: controller.signal,
+      });
+    } catch {
+      window.clearTimeout(timeout);
+      setBusy("");
+      alert("Penyimpanan terlalu lama atau koneksi terputus. Data isian tetap berada di halaman ini, silakan coba lagi.");
+      return;
+    }
+    window.clearTimeout(timeout);
     if (res.ok) {
       await load();
     } else {
