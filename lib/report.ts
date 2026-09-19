@@ -2,7 +2,6 @@ import {
   AlignmentType,
   BorderStyle,
   Document,
-  HeadingLevel,
   PageBreak,
   Paragraph,
   ShadingType,
@@ -10,45 +9,33 @@ import {
   TableCell,
   TableRow,
   TextRun,
-  VerticalAlign,
   WidthType,
 } from 'docx';
 import { ingredientDescription } from './domain';
 
-const PAGE_WIDTH = 9360;
+const WIDTH = 9360;
 const FONT = 'Cambria';
-const small = 17;
-const normal = 19;
-const heading = 24;
+const text = (value: unknown) => String(value ?? '').trim() || '-';
+const dateText = (value: unknown) => value ? new Date(String(value)).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
 
-type CellOptions = {
-  bold?: boolean;
-  shade?: string;
-  align?: typeof AlignmentType[keyof typeof AlignmentType];
-  vertical?: typeof VerticalAlign[keyof typeof VerticalAlign];
-};
-
-function paragraphs(text: string, options: CellOptions = {}) {
-  const lines = String(text || '-').split('\n');
-  return lines.map((line) => new Paragraph({
-    alignment: options.align,
-    spacing: { after: 40, line: 240 },
-    children: [new TextRun({ text: line || ' ', bold: options.bold, font: FONT, size: small })],
-  }));
+function line(value: unknown, bold = false, size = 19) {
+  return new Paragraph({ spacing: { after: 35, line: 240 }, children: [new TextRun({ text: text(value), font: FONT, size, bold })] });
 }
 
-function cell(text: string, width: number, options: CellOptions = {}) {
+function multiline(value: unknown, bold = false) {
+  return String(value || '-').split('\n').map((item) => line(item, bold));
+}
+
+function cell(value: unknown, width: number, bold = false, shade?: string) {
   return new TableCell({
     width: { size: width, type: WidthType.DXA },
-    verticalAlign: options.vertical === VerticalAlign.CENTER ? VerticalAlign.CENTER : VerticalAlign.TOP,
-    shading: options.shade ? { type: ShadingType.CLEAR, fill: options.shade } : undefined,
-    margins: { top: 80, bottom: 80, left: 100, right: 100 },
-    children: paragraphs(text, options),
+    shading: shade ? { type: ShadingType.CLEAR, fill: shade } : undefined,
+    margins: { top: 70, bottom: 70, left: 90, right: 90 },
+    children: multiline(value, bold),
   });
 }
 
-function reportTable(headers: string[], rows: string[][], widths?: number[]) {
-  const columnWidths = widths || headers.map(() => Math.floor(PAGE_WIDTH / headers.length));
+function borderedTable(headers: string[], rows: string[][], widths: number[]) {
   const borders = {
     top: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
     bottom: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
@@ -58,125 +45,112 @@ function reportTable(headers: string[], rows: string[][], widths?: number[]) {
     insideVertical: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
   };
   return new Table({
-    width: { size: PAGE_WIDTH, type: WidthType.DXA },
-    columnWidths,
-    borders,
+    width: { size: WIDTH, type: WidthType.DXA }, columnWidths: widths, borders,
     rows: [
-      new TableRow({ tableHeader: true, children: headers.map((header, index) => cell(header, columnWidths[index], { bold: true, shade: 'D9E1E2', align: AlignmentType.CENTER })) }),
-      ...rows.map((row) => new TableRow({ cantSplit: true, children: row.map((value, index) => cell(value, columnWidths[index])) })),
+      new TableRow({ tableHeader: true, children: headers.map((header, i) => cell(header, widths[i], true, 'D9E1E2')) }),
+      ...rows.map((row) => new TableRow({ cantSplit: true, children: row.map((value, i) => cell(value, widths[i])) })),
     ],
   });
 }
 
-function title(text: string, size = heading) {
-  return new Paragraph({
-    spacing: { before: 180, after: 120 },
-    children: [new TextRun({ text, bold: true, font: FONT, size })],
+function valueTable(rows: [string, string][]) {
+  const borders = {
+    top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+  };
+  return new Table({
+    width: { size: WIDTH, type: WidthType.DXA }, columnWidths: [2500, 180, 6680], borders,
+    rows: rows.map(([label, value]) => new TableRow({ children: [cell(label, 2500, true), cell(':', 180), cell(value, 6680)] })),
   });
 }
 
-function centeredTitle(text: string, size: number) {
-  return new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 100 }, children: [new TextRun({ text, bold: true, font: FONT, size })] });
+function centered(value: string, size: number, before = 0, after = 100) {
+  return new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before, after }, children: [new TextRun({ text: value, font: FONT, size, bold: true })] });
 }
 
-function numbered(items: string[]) {
-  return items.filter(Boolean).map((item, index) => `${index + 1}) ${item}`).join('\n');
+function sectionTitle(value: string) {
+  return new Paragraph({ spacing: { before: 180, after: 100 }, children: [new TextRun({ text: value, font: FONT, size: 24, bold: true })] });
 }
 
-function dateText(value: unknown) {
-  return value ? new Date(String(value)).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
+function numbered(values: string[]) {
+  return values.filter(Boolean).map((value, index) => `${index + 1}) ${value}`).join('\n');
 }
 
-function officialsText(application: any) {
+function officialNames(application: any) {
   const officials = application.officials?.length ? application.officials : [{ name: application.companyOfficialName || application.ownerName || '-', title: null }];
-  return officials.map((official: any, index: number) => `${index + 1}. ${official.name}${official.title ? ` (${official.title})` : ''}`).join('\n');
+  return officials.map((item: any, index: number) => `${index + 1}. ${text(item.name)}${item.title ? ` (${item.title})` : ''}`).join('\n');
 }
 
-function auditorText(application: any) {
-  return application.assignments?.length
-    ? application.assignments.map((assignment: any, index: number) => `${index + 1}. ${assignment.auditorName || assignment.auditor?.name || '-'}${assignment.auditorTitle ? `, ${assignment.auditorTitle}` : ''}`).join('\n')
-    : '-';
+function auditorNames(application: any) {
+  return application.assignments?.length ? application.assignments.map((item: any, index: number) => `${index + 1}. ${text(item.auditorName || item.auditor?.name)}${item.auditorTitle ? `, ${item.auditorTitle}` : ''}`).join('\n') : '-';
 }
 
-function evidenceText(response: any) {
-  const evidence = [response?.providerNotes, ...(response?.evidences || []).map((item: any) => item.fileName ? `${item.fileName}: ${item.url}` : item.url)].filter(Boolean);
-  return evidence.length ? evidence.join('\n') : 'Belum diisi oleh penyelia';
+function evidence(response: any) {
+  const values = [response?.providerNotes, ...(response?.evidences || []).map((item: any) => item.url || item.fileName)].filter(Boolean);
+  return values.length ? values.join('\n') : 'Belum diisi oleh penyelia';
 }
 
-function resultText(category: any, criteria: any[], results: any[]) {
-  const labels: Record<string, string> = { SESUAI: 'Sesuai', PERLU_PERBAIKAN: 'Perlu Perbaikan', TIDAK_SESUAI: 'Tidak Sesuai', TIDAK_BERLAKU: 'Tidak Berlaku' };
-  return criteria.map((criterion: any, index: number) => {
-    const audit = results.find((item: any) => item.section === category.code && item.criterion === criterion.title);
-    const response = criterion.response;
-    const result = audit?.result || response?.auditorResult;
-    const note = audit?.note || response?.auditorNotes;
-    return `${index + 1}) ${labels[result] || 'Belum diperiksa'}${note ? ` — ${note}` : ''}`;
-  }).join('\n');
-}
+const resultLabels: Record<string, string> = { SESUAI: 'Sesuai', PERLU_PERBAIKAN: 'Perlu Perbaikan', TIDAK_SESUAI: 'Tidak Sesuai', TIDAK_BERLAKU: 'Tidak Berlaku' };
 
 export function buildAuditReport(application: any) {
   const sections: (Paragraph | Table)[] = [];
-  const factory = application.factoryName || application.companyName || '-';
-  const address = application.address || '-';
-  const categories = application.sjphCategories?.length
-    ? application.sjphCategories
-    : ['KOMITMEN', 'BAHAN', 'PROSES', 'PRODUK', 'EVALUASI'].map((code, index) => ({ code, name: code, sortOrder: index }));
+  const factory = text(application.factoryName || application.companyName);
+  const address = text(application.address);
   const responses = application.sjphResponses || [];
-  const auditResults = application.auditResults || [];
+  const results = application.auditResults || [];
+  const categories = application.sjphCategories?.length ? application.sjphCategories : ['KOMITMEN', 'BAHAN', 'PROSES', 'PRODUK', 'EVALUASI'].map((code, sortOrder) => ({ code, name: code, sortOrder, criteria: [] }));
 
-  sections.push(centeredTitle('LAPORAN HASIL AUDIT HALAL', 30));
-  sections.push(centeredTitle('LEMBAGA PEMERIKSA HALAL UNIVERSITAS JEMBER', 20));
-  sections.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { before: 300, after: 180, line: 280 }, children: [new TextRun({ font: FONT, size: normal, text: `Dengan ini dilaporkan hasil pemeriksaan/auditing oleh Tim LPH UNEJ pada ${factory} yang beralamat di ${address}.` })] }));
-  sections.push(reportTable(['Data Pengajuan', 'Keterangan'], [
-    ['Nomor Audit', application.auditNumber || '-'],
-    ['Nama Pabrik / Usaha', factory],
-    ['Nama Perusahaan', application.companyName || '-'],
+  sections.push(centered('LAPORAN HASIL AUDIT HALAL', 30, 0, 100));
+  sections.push(centered('LEMBAGA PEMERIKSA HALAL UNIVERSITAS JEMBER', 20, 0, 300));
+  sections.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { after: 150, line: 280 }, children: [new TextRun({ text: `Dengan ini dilaporkan hasil pemeriksaan/auditing oleh Tim LPH UNEJ pada ${factory} yang beralamat di ${address}.`, font: FONT, size: 19 })] }));
+  sections.push(valueTable([
+    ['Nama Pabrik', factory],
     ['Alamat Pabrik', address],
     ['Tanggal Audit', dateText(application.auditDate)],
-    ['NIB', application.nib || '-'],
-    ['STTD', application.sttd || '-'],
-    ['Auditor', auditorText(application)],
-    ['Nama Pejabat Perusahaan', officialsText(application)],
-  ], [2600, 6760]));
-  sections.push(new Paragraph({ spacing: { before: 260, after: 260 }, children: [new TextRun({ text: `STATUS PENDAFTARAN: ${application.registrationType || 'SERTIFIKASI BARU'}`, bold: true, font: FONT, size: normal })] }));
-  sections.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 300, after: 120 }, children: [new TextRun({ text: `Jember, ${dateText(application.auditDate)}`, font: FONT, size: normal })] }));
-  sections.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 500 }, children: [new TextRun({ text: 'Pimpinan LPH\n\n\n____________________________', bold: true, font: FONT, size: normal })] }));
+    ['STTD', text(application.sttd)],
+    ['Nomor Audit', text(application.auditNumber)],
+    ['Auditor', auditorNames(application)],
+    ['Nama Pejabat\nPerusahaan', officialNames(application)],
+  ]));
+  sections.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 180, after: 220 }, children: [new TextRun({ text: `STATUS PENDAFTARAN: ${text(application.registrationType || 'SERTIFIKASI BARU')}`, font: FONT, size: 19, bold: true })] }));
+  sections.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 250, after: 60 }, children: [new TextRun({ text: `Jember, ${dateText(application.auditDate)}`, font: FONT, size: 19 })] }));
+  sections.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 100 }, children: [new TextRun({ text: 'Pimpinan LPH', font: FONT, size: 19, bold: true })] }));
+  sections.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 100 }, children: [new TextRun({ text: '\n\n____________________________', font: FONT, size: 19 })] }));
 
   sections.push(new Paragraph({ children: [new PageBreak()] }));
-  sections.push(title(`Kelompok Produk: ${application.productGroup || '-'}`));
-  sections.push(title('Daftar Produk', 21));
-  sections.push(reportTable(['No.', 'Nama Produk', 'Jenis Produk', 'Kode Produksi'], (application.products || []).map((product: any, index: number) => [String(index + 1), product.name, product.type || '-', product.productionCode || '-']), [700, 3900, 3000, 1760]));
-  sections.push(title('Daftar Bahan', 21));
-  sections.push(reportTable(['No.', 'Bahan', 'Diragukan', 'Temuan / Sertifikat', 'Keterangan'], (application.ingredients || []).map((item: any, index: number) => [String(index + 1), item.name, item.hasSH ? 'V' : '-', item.hasSH ? `SH BPJPH No. ${item.shNumber || '-'}` : '-', ingredientDescription(item)]), [600, 2500, 1200, 2800, 2260]));
+  sections.push(sectionTitle(`Kelompok Produk: ${text(application.productGroup)}`));
+  sections.push(sectionTitle('Daftar Produk'));
+  sections.push(borderedTable(['No.', 'Nama Produk', 'Jenis Produk', 'Kode Produksi'], (application.products || []).map((item: any, index: number) => [String(index + 1), text(item.name), text(item.type), text(item.productionCode)]), [650, 3900, 3000, 1810]));
+  sections.push(sectionTitle('DAFTAR BAHAN'));
+  sections.push(borderedTable(['No.', 'Bahan', 'Diragukan', 'Temuan / Sertifikat', 'Keterangan'], (application.ingredients || []).map((item: any, index: number) => [String(index + 1), text(item.name), item.hasSH ? 'V' : '-', item.hasSH ? `SH BPJPH NO. ${text(item.shNumber)}` : '-', ingredientDescription(item)]), [650, 2600, 1200, 2800, 2110]));
 
   sections.push(new Paragraph({ children: [new PageBreak()] }));
-  sections.push(centeredTitle('IMPLEMENTASI SJPH', 24));
-  sections.push(new Paragraph({ spacing: { after: 150 }, children: [new TextRun({ text: address, font: FONT, size: normal })] }));
+  sections.push(centered('IMPLEMENTASI SJPH', 24, 0, 100));
+  sections.push(line(address));
   const sjphRows = categories.map((category: any) => {
-    const categoryResponses = responses.filter((response: any) => response.criterion?.category?.code === category.code);
-    const criteria = (category.criteria || []).map((criterion: any) => ({ ...criterion, response: responses.find((response: any) => response.criterionId === criterion.id) }));
-    const usableCriteria = criteria.length ? criteria : categoryResponses.map((response: any) => ({ ...response.criterion, response }));
-    return [
-      category.name || category.code,
-      numbered(usableCriteria.map((criterion: any) => criterion.title)),
-      resultText(category, usableCriteria, auditResults),
-      numbered(usableCriteria.map((criterion: any) => evidenceText(criterion.response))),
-    ];
+    const categoryResponses = responses.filter((item: any) => item.criterion?.category?.code === category.code);
+    const criteria = (category.criteria || []).map((criterion: any) => ({ ...criterion, response: responses.find((item: any) => item.criterionId === criterion.id) }));
+    const actual = criteria.length ? criteria : categoryResponses.map((item: any) => ({ ...item.criterion, response: item }));
+    const criteriaText = numbered(actual.map((item: any) => item.title));
+    const auditText = actual.map((item: any, index: number) => { const result = results.find((audit: any) => audit.section === category.code && audit.criterion === item.title); const response = item.response; return `${index + 1}) ${resultLabels[result?.result || response?.auditorResult] || 'Belum diperiksa'}${result?.note || response?.auditorNotes ? ` — ${result?.note || response?.auditorNotes}` : ''}`; }).join('\n');
+    const evidenceText = numbered(actual.map((item: any) => `${item.title}: ${evidence(item.response)}`));
+    return [text(category.name || category.code), criteriaText || 'Belum ada kriteria', auditText || 'Belum diperiksa', evidenceText || 'Belum diisi oleh penyelia'];
   });
-  sections.push(reportTable(['Kriteria', 'Hasil Audit', 'Status / Catatan Auditor', 'Bukti/Keterangan'], sjphRows, [1900, 2500, 2500, 2460]));
+  sections.push(borderedTable(['Kriteria', 'Hasil Audit', 'Bukti/keterangan'], sjphRows.map((row: string[]) => [row[0], `${row[1]}\n\n${row[2]}`, row[3]]), [2700, 3200, 3460]));
 
   sections.push(new Paragraph({ children: [new PageBreak()] }));
-  sections.push(title('RINGKASAN HASIL PEMERIKSAAN DAN RENCANA TINDAK LANJUT', 24));
-  sections.push(new Paragraph({ children: [new TextRun({ text: '(disampaikan saat closing meeting)', italics: true, font: FONT, size: normal })] }));
-  sections.push(reportTable(['Auditor Halal / Catatan Closing Meeting'], [[auditResults.map((item: any) => item.note).filter(Boolean).filter((value: string, index: number, values: string[]) => values.indexOf(value) === index).join('\n') || 'Belum ada catatan closing meeting.']], [9360]));
-  const findingRows = (application.temuan || []).map((finding: any, index: number) => {
-    const fixes = (finding.fixes || []).map((fix: any) => `${fix.notes || 'Perbaikan'}${fix.evidenceUrl ? `\n${fix.evidenceUrl}` : ''}`).join('\n') || '-';
-    const verification = (finding.verifications || []).map((item: any) => `${item.result}${item.note ? `: ${item.note}` : ''}`).join('\n');
-    return [String(index + 1), finding.description, fixes, verification || finding.status || 'OPEN'];
-  });
-  sections.push(reportTable(['No.', 'Temuan', 'Perbaikan', 'Status / Verifikasi'], findingRows.length ? findingRows : [['-', 'Belum ada temuan yang dicatat.', '-', '-']], [600, 3700, 3000, 2060]));
-  sections.push(new Paragraph({ spacing: { before: 350 }, children: [new TextRun({ text: `Jember, ${dateText(application.auditDate)}`, font: FONT, size: normal })] }));
-  sections.push(reportTable(['Lead Auditor / Ketua LPH', 'Auditee / Pejabat Perusahaan'], [[`Ketua LPH: ${application.leadLphName || '-'}\nAuditor:\n${auditorText(application)}\n\nTanda tangan:\n\n____________________________`, `Nama:\n${officialsText(application)}\n\nTanda tangan:\n\n____________________________`]], [4680, 4680]));
+  sections.push(sectionTitle('RINGKASAN HASIL PEMERIKSAAN DAN RENCANA TINDAK LANJUT'));
+  sections.push(new Paragraph({ children: [new TextRun({ text: '(disampaikan saat closing meeting)', font: FONT, size: 18, italics: true })] }));
+  const comments = [...new Set(results.map((item: any) => item.note).filter(Boolean))].join('\n') || 'Belum ada catatan Auditor Halal.';
+  sections.push(borderedTable(['Auditor Halal:'], [[comments]], [WIDTH]));
+  const findingRows = (application.temuan || []).map((item: any, index: number) => [String(index + 1), text(item.description), (item.fixes || []).map((fix: any) => `${text(fix.notes)}${fix.evidenceUrl ? `\n${fix.evidenceUrl}` : ''}`).join('\n') || '-', (item.verifications || []).map((verification: any) => `${text(verification.result)}${verification.note ? `: ${verification.note}` : ''}`).join('\n') || text(item.status)]);
+  sections.push(borderedTable(['No.', 'Temuan', 'Perbaikan', 'Status'], findingRows.length ? findingRows : [['-', 'Belum ada temuan.', '-', '-']], [650, 3700, 3000, 2010]));
+  sections.push(new Paragraph({ spacing: { before: 300, after: 100 }, children: [new TextRun({ text: `Jember, ${dateText(application.auditDate)}`, font: FONT, size: 19 })] }));
+  sections.push(borderedTable(['Lead Auditor / Ketua LPH', 'Auditee'], [[`Ketua LPH: ${text(application.leadLphName)}\nAuditor:\n${auditorNames(application)}\n\nTanda tangan:\n\n____________________________`, `Nama Pejabat:\n${officialNames(application)}\n\nTanda tangan:\n\n____________________________`]], [4680, 4680]));
 
   return new Document({ sections: [{ properties: { page: { margin: { top: 720, right: 720, bottom: 720, left: 720 } } }, children: sections }] });
 }
