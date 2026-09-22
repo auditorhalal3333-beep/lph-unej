@@ -22,7 +22,7 @@ export async function GET(
     where: { pengajuanId },
     include: { items: { orderBy: { sortOrder: 'asc' } } },
   });
-  return NextResponse.json(summary || { auditorHalal: '', items: [] });
+  return NextResponse.json(summary || { auditorHalal: '', summaryText: '', items: [] });
 }
 
 export async function PUT(
@@ -39,6 +39,7 @@ export async function PUT(
 
   const body = await req.json();
   const auditorHalal = typeof body.auditorHalal === 'string' ? body.auditorHalal.trim() : '';
+  const summaryText = typeof body.summaryText === 'string' ? body.summaryText.trim() : '';
   const rawItems = Array.isArray(body.items) ? body.items : [];
   const items = rawItems
     .map((item: unknown) => {
@@ -54,8 +55,8 @@ export async function PUT(
   const summary = await prisma.$transaction(async (tx) => {
     const saved = await tx.auditSummary.upsert({
       where: { pengajuanId },
-      update: { auditorHalal, items: { deleteMany: {}, create: items } },
-      create: { pengajuanId, auditorHalal, items: { create: items } },
+      update: { auditorHalal, summaryText, items: { deleteMany: {}, create: items } },
+      create: { pengajuanId, auditorHalal, summaryText, items: { create: items } },
       include: { items: { orderBy: { sortOrder: 'asc' } } },
     });
     await tx.auditLog.create({

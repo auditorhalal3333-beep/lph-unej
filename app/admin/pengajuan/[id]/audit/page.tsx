@@ -85,7 +85,7 @@ export default function AuditWorkspace() {
   const [chairs, setChairs] = useState<any[]>([]);
   const [selectedOfficialId, setSelectedOfficialId] = useState("");
   const [identityMessage, setIdentityMessage] = useState("");
-  const [summary, setSummary] = useState({ auditorHalal: "", items: [{ finding: "", correction: "" }] });
+  const [summary, setSummary] = useState({ summaryText: "", auditorHalal: "", items: [{ finding: "", correction: "" }] });
   const [summaryMessage, setSummaryMessage] = useState("");
   const [categories, setCategories] = useState<any[]>([]);
   const [drafts, setDrafts] = useState<
@@ -119,6 +119,7 @@ export default function AuditWorkspace() {
     if (summaryRes.ok) {
       const saved = await summaryRes.json();
       setSummary({
+        summaryText: saved.summaryText || "",
         auditorHalal: saved.auditorHalal || "",
         items: saved.items?.length ? saved.items.map((item: any) => ({ finding: item.finding || "", correction: item.correction || "" })) : [{ finding: "", correction: "" }],
       });
@@ -284,6 +285,7 @@ export default function AuditWorkspace() {
       else {
         setSummaryMessage("Ringkasan berhasil disimpan.");
         setSummary({
+          summaryText: data.summaryText || "",
           auditorHalal: data.auditorHalal || "",
           items: data.items?.length ? data.items.map((item: any) => ({ finding: item.finding || "", correction: item.correction || "" })) : [{ finding: "", correction: "" }],
         });
@@ -550,12 +552,22 @@ export default function AuditWorkspace() {
           <div className="space-y-5">
             <p className="text-sm italic text-[#526b66]">(disampaikan saat closing meeting)</p>
             <div className="rounded-xl border border-[#dce9e5] p-4">
+              <label className="text-xs font-bold text-[#183b34]">Ringkasan</label>
+              <textarea
+                value={summary.summaryText}
+                onChange={(e) => setSummary((prev) => ({ ...prev, summaryText: e.target.value }))}
+                placeholder="Ketik ringkasan hasil pemeriksaan dan rencana tindak lanjut..."
+                rows={5}
+                className="mt-2 w-full rounded-xl border border-[#dce9e5] px-3 py-3 text-sm outline-none focus:border-[#0a8065]"
+              />
+            </div>
+            <div className="rounded-xl border border-[#dce9e5] p-4">
               <label className="text-xs font-bold text-[#183b34]">Auditor Halal</label>
               <textarea
                 value={summary.auditorHalal}
                 onChange={(e) => setSummary((prev) => ({ ...prev, auditorHalal: e.target.value }))}
-                placeholder="Ketik ringkasan atau nama Auditor Halal..."
-                rows={4}
+                placeholder="Ketik nama atau keterangan Auditor Halal..."
+                rows={3}
                 className="mt-2 w-full rounded-xl border border-[#dce9e5] px-3 py-3 text-sm outline-none focus:border-[#0a8065]"
               />
             </div>

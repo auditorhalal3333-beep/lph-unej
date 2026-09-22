@@ -249,6 +249,7 @@ model AuditSummary {
   id          String             @id @default(cuid())
   pengajuanId String             @unique
   auditorHalal String?
+  summaryText String?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
   pengajuan   Pengajuan          @relation(fields: [pengajuanId], references: [id], onDelete: Cascade)
