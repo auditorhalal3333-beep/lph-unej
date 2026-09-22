@@ -176,10 +176,11 @@ export function buildAuditReport(application: any) {
   sections.push(new Paragraph({ children: [new PageBreak()] }));
   sections.push(sectionTitle('RINGKASAN HASIL PEMERIKSAAN DAN RENCANA TINDAK LANJUT'));
   sections.push(new Paragraph({ spacing: { before: 0, after: 0, line: LINE }, children: [new TextRun({ text: '(disampaikan saat closing meeting)', font: FONT, size: FONT_SIZE, italics: true })] }));
-  const comments = [...new Set(results.map((item: any) => item.note).filter(Boolean))].join('\n') || 'Belum ada catatan Auditor Halal.';
-  sections.push(borderedTable(['Auditor Halal:'], [[comments]], [WIDTH]));
-  const findingRows = (application.temuan || []).map((item: any, index: number) => [String(index + 1), text(item.description), (item.fixes || []).map((fix: any) => `${text(fix.notes)}${fix.evidenceUrl ? `\n${fix.evidenceUrl}` : ''}`).join('\n') || '-', (item.verifications || []).map((verification: any) => `${text(verification.result)}${verification.note ? `: ${verification.note}` : ''}`).join('\n') || text(item.status)]);
-  sections.push(borderedTable(['No.', 'Temuan', 'Perbaikan', 'Status'], findingRows.length ? findingRows : [['-', 'Belum ada temuan.', '-', '-']], [650, 3700, 3000, 2010]));
+  const summary = application.auditSummary;
+  const summaryItems = summary?.items || [];
+  sections.push(borderedTable(['Auditor Halal:'], [[text(summary?.auditorHalal || 'Belum diisi oleh auditor.')]], [WIDTH]));
+  const findingRows = summaryItems.map((item: any, index: number) => [`${index + 1}. ${text(item.finding)}`, text(item.correction)]);
+  sections.push(borderedTable(['Temuan', 'Perbaikan'], findingRows.length ? findingRows : [['Belum ada temuan.', '-']], [4680, 4680]));
   sections.push(new Paragraph({ spacing: { before: 0, after: 0, line: LINE }, children: [new TextRun({ text: `Jember, ${dateText(application.auditDate)}`, font: FONT, size: FONT_SIZE })] }));
   sections.push(borderedTable(['Lead Auditor / Ketua LPH', 'Auditee'], [[`Ketua LPH: ${text(application.leadLphName)}\nAuditor:\n${auditorNames(application)}\n\nTanda tangan:\n\n____________________________`, `Nama Pejabat:\n${officialNames(application)}\n\nTanda tangan:\n\n____________________________`]], [4680, 4680]));
 

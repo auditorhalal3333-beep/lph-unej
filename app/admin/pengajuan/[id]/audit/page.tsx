@@ -11,6 +11,8 @@ import {
   ShieldCheck,
   UserRound,
   AlertCircle,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 
@@ -45,6 +47,7 @@ const tabs = [
   { key: "products", label: "Produk", icon: FileText },
   { key: "materials", label: "Bahan", icon: ShieldCheck },
   { key: "sjph", label: "SJPH", icon: ClipboardCheck },
+  { key: "summary", label: "Ringkasan", icon: FileText },
   { key: "signatures", label: "Penandatangan Laporan", icon: UserRound },
 ];
 const resultOptions = [
@@ -82,6 +85,8 @@ export default function AuditWorkspace() {
   const [chairs, setChairs] = useState<any[]>([]);
   const [selectedOfficialId, setSelectedOfficialId] = useState("");
   const [identityMessage, setIdentityMessage] = useState("");
+  const [summary, setSummary] = useState({ auditorHalal: "", items: [{ finding: "", correction: "" }] });
+  const [summaryMessage, setSummaryMessage] = useState("");
   const [categories, setCategories] = useState<any[]>([]);
   const [drafts, setDrafts] = useState<
     Record<
@@ -90,10 +95,11 @@ export default function AuditWorkspace() {
     >
   >({});
   async function load() {
-    const [res, cres, staffRes] = await Promise.all([
+    const [res, cres, staffRes, summaryRes] = await Promise.all([
       fetch(`/api/pengajuan/${id}`),
       fetch(`/api/sjph/criteria?pengajuanId=${id}`),
       fetch('/api/admin/staff'),
+      fetch(`/api/audit-summary/${id}`),
     ]);
     if (res.ok) {
       const data = await res.json();
@@ -110,6 +116,13 @@ export default function AuditWorkspace() {
     }
     if (cres.ok) setCategories(await cres.json());
     if (staffRes.ok) { const staff = await staffRes.json(); setChairs(staff.chairs || []); }
+    if (summaryRes.ok) {
+      const saved = await summaryRes.json();
+      setSummary({
+        auditorHalal: saved.auditorHalal || "",
+        items: saved.items?.length ? saved.items.map((item: any) => ({ finding: item.finding || "", correction: item.correction || "" })) : [{ finding: "", correction: "" }],
+      });
+    }
   }
   useEffect(() => {
     load();
@@ -257,6 +270,30 @@ export default function AuditWorkspace() {
     }
     setBusy("");
   }
+  async function saveSummary() {
+    setBusy("summary");
+    setSummaryMessage("");
+    try {
+      const res = await fetch(`/api/audit-summary/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(summary),
+      });
+      const data = await res.json();
+      if (!res.ok) setSummaryMessage(data.error || "Ringkasan gagal disimpan.");
+      else {
+        setSummaryMessage("Ringkasan berhasil disimpan.");
+        setSummary({
+          auditorHalal: data.auditorHalal || "",
+          items: data.items?.length ? data.items.map((item: any) => ({ finding: item.finding || "", correction: item.correction || "" })) : [{ finding: "", correction: "" }],
+        });
+      }
+    } catch {
+      setSummaryMessage("Ringkasan gagal disimpan. Periksa koneksi lalu coba lagi.");
+    }
+    setBusy("");
+  }
+
   async function saveAllGroups() {
     setBusy("all-groups");
     const all = Object.values(drafts).flatMap((group) =>
@@ -505,6 +542,39 @@ export default function AuditWorkspace() {
             <p className="mt-2 text-center text-[10px] text-[#71847f]">
               Simpan hasil yang sudah diisi. Kriteria yang kosong akan dilewati.
             </p>
+          </div>
+        </Card>
+      )}{" "}
+      {tab === "summary" && (
+        <Card title="Ringkasan Hasil Pemeriksaan dan Rencana Tindak Lanjut">
+          <div className="space-y-5">
+            <p className="text-sm italic text-[#526b66]">(disampaikan saat closing meeting)</p>
+            <div className="rounded-xl border border-[#dce9e5] p-4">
+              <label className="text-xs font-bold text-[#183b34]">Auditor Halal</label>
+              <textarea
+                value={summary.auditorHalal}
+                onChange={(e) => setSummary((prev) => ({ ...prev, auditorHalal: e.target.value }))}
+                placeholder="Ketik ringkasan atau nama Auditor Halal..."
+                rows={4}
+                className="mt-2 w-full rounded-xl border border-[#dce9e5] px-3 py-3 text-sm outline-none focus:border-[#0a8065]"
+              />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {summary.items.map((item, index) => (
+                <div key={index} className="rounded-xl border border-[#dce9e5] p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#183b34]">{index + 1}. Temuan</span>
+                    <button type="button" onClick={() => setSummary((prev) => ({ ...prev, items: prev.items.length > 1 ? prev.items.filter((_, i) => i !== index) : [{ finding: "", correction: "" }] }))} className="text-[#c54b39]" aria-label="Hapus baris"><Trash2 size={15} /></button>
+                  </div>
+                  <textarea value={item.finding} onChange={(e) => setSummary((prev) => ({ ...prev, items: prev.items.map((row, i) => i === index ? { ...row, finding: e.target.value } : row) }))} rows={5} placeholder="Tuliskan temuan..." className="w-full rounded-xl border border-[#dce9e5] px-3 py-3 text-sm outline-none focus:border-[#0a8065]" />
+                  <label className="mt-3 block text-xs font-bold text-[#183b34]">Perbaikan</label>
+                  <textarea value={item.correction} onChange={(e) => setSummary((prev) => ({ ...prev, items: prev.items.map((row, i) => i === index ? { ...row, correction: e.target.value } : row) }))} rows={5} placeholder="Tuliskan perbaikan..." className="mt-2 w-full rounded-xl border border-[#dce9e5] px-3 py-3 text-sm outline-none focus:border-[#0a8065]" />
+                </div>
+              ))}
+            </div>
+            <button type="button" onClick={() => setSummary((prev) => ({ ...prev, items: [...prev.items, { finding: "", correction: "" }] }))} className="inline-flex items-center gap-2 rounded-xl border border-[#bde4d2] px-4 py-2.5 text-xs font-bold text-[#08725b]"><Plus size={14} /> Tambah baris</button>
+            {summaryMessage && <p className="text-xs font-semibold text-[#08725b]">{summaryMessage}</p>}
+            <button type="button" onClick={saveSummary} disabled={busy === "summary"} className="inline-flex items-center gap-2 rounded-xl bg-[#08725b] px-5 py-3 text-xs font-bold text-white disabled:opacity-50"><Save size={14} />{busy === "summary" ? "Menyimpan..." : "Simpan Ringkasan"}</button>
           </div>
         </Card>
       )}{" "}

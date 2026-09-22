@@ -76,6 +76,7 @@ model Pengajuan {
   notifications   Notification[]
   reports         Report[]
   officials       PengajuanOfficial[]
+  auditSummary    AuditSummary?
 }
 
 model PengajuanOfficial {
@@ -244,6 +245,25 @@ model Evidence {
   @@index([pengajuanId])
 }
 
+model AuditSummary {
+  id          String             @id @default(cuid())
+  pengajuanId String             @unique
+  auditorHalal String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  pengajuan   Pengajuan          @relation(fields: [pengajuanId], references: [id], onDelete: Cascade)
+  items       AuditSummaryItem[]
+}
+
+model AuditSummaryItem {
+  id        String       @id @default(cuid())
+  summaryId String
+  sortOrder Int          @default(0)
+  finding   String
+  correction String
+  summary   AuditSummary @relation(fields: [summaryId], references: [id], onDelete: Cascade)
+  @@index([summaryId, sortOrder])
+}
 model AuditResult {
   id          String    @id @default(cuid())
   pengajuanId String
