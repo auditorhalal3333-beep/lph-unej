@@ -208,8 +208,6 @@ export function buildAuditReport(application: any) {
   sections.push(borderedTable(['Kriteria', 'Hasil Audit', 'Bukti/keterangan'], sjphRows.map((row: string[]) => [row[0], `${row[1]}\n\n${row[2]}`, row[3]]), [2700, 3200, 3460]));
 
   sections.push(new Paragraph({ children: [new PageBreak()] }));
-  sections.push(sectionTitle('RINGKASAN HASIL PEMERIKSAAN DAN RENCANA TINDAK LANJUT'));
-  sections.push(new Paragraph({ spacing: { before: 0, after: 0, line: LINE }, children: [new TextRun({ text: '(disampaikan saat closing meeting)', font: FONT, size: FONT_SIZE, italics: true })] }));
   const summary = application.auditSummary;
   const summaryItems = summary?.items || [];
   sections.push(summaryBox(summary?.summaryText || '', summary?.auditorHalal || ''));
