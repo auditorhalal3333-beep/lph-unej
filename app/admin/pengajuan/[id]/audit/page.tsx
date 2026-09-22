@@ -495,16 +495,16 @@ export default function AuditWorkspace() {
             headers={[
               "No.",
               "Bahan",
-              "Produsen",
-              "Sertifikat Halal",
+              "Diragukan",
+              "Temuan",
               "Keterangan",
             ]}
             rows={app.ingredients.map((m, i) => [
               String(i + 1),
               m.name,
-              m.producer || "-",
-              m.hasSH ? "Ada" : "Tidak ada",
-              m.hasSH ? `V SH BPJPH NO. ${m.shNumber}` : "Perlu pemeriksaan",
+              m.hasSH ? "-" : "✓",
+              m.hasSH ? `SH BPJPH NO. ${m.shNumber || "-"}` : "-",
+              m.notes || "Belum diisi",
             ])}
           />
         </Card>
