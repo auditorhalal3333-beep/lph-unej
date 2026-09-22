@@ -87,6 +87,8 @@ export default function AuditWorkspace() {
   const [identityMessage, setIdentityMessage] = useState("");
   const [summary, setSummary] = useState({ summaryText: "", auditorHalal: "", items: [{ finding: "", correction: "" }] });
   const [summaryMessage, setSummaryMessage] = useState("");
+  const [ingredientNotes, setIngredientNotes] = useState<Record<string, string>>({});
+  const [ingredientNoteBusy, setIngredientNoteBusy] = useState("");
   const [categories, setCategories] = useState<any[]>([]);
   const [drafts, setDrafts] = useState<
     Record<
@@ -104,6 +106,7 @@ export default function AuditWorkspace() {
     if (res.ok) {
       const data = await res.json();
       setApp(data);
+      setIngredientNotes(Object.fromEntries((data.ingredients || []).map((item: any) => [item.id, item.notes || ""])));
       setLeadLphName(data.leadLphName || "");
       const assignment = data.assignments?.[0];
       if (assignment) {
@@ -270,6 +273,22 @@ export default function AuditWorkspace() {
       alert(e.error);
     }
     setBusy("");
+  }
+  async function saveIngredientNote(ingredientId: string) {
+    setIngredientNoteBusy(ingredientId);
+    const res = await fetch(`/api/ingredients/${ingredientId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes: ingredientNotes[ingredientId] || "" }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setApp((prev) => prev ? { ...prev, ingredients: prev.ingredients.map((item) => item.id === ingredientId ? { ...item, notes: updated.notes } : item) } : prev);
+    } else {
+      const error = await res.json();
+      alert(error.error || "Keterangan auditor gagal disimpan.");
+    }
+    setIngredientNoteBusy("");
   }
   async function saveSummary() {
     setBusy("summary");
@@ -504,7 +523,10 @@ export default function AuditWorkspace() {
               m.name,
               m.hasSH ? "-" : "✓",
               m.hasSH ? `SH BPJPH NO. ${m.shNumber || "-"}` : "-",
-              m.notes || "Belum diisi",
+              <div key={m.id} className="min-w-[240px] space-y-2">
+                <textarea value={ingredientNotes[m.id] || ""} onChange={(e) => setIngredientNotes((prev) => ({ ...prev, [m.id]: e.target.value }))} rows={2} placeholder="Keterangan auditor" className="w-full rounded-lg border border-[#dce9e5] px-2 py-2 text-xs outline-none focus:border-[#0a8065]" />
+                <button type="button" onClick={() => saveIngredientNote(m.id)} disabled={ingredientNoteBusy === m.id} className="rounded-lg bg-[#08725b] px-3 py-1.5 text-[10px] font-bold text-white disabled:opacity-50">{ingredientNoteBusy === m.id ? "Menyimpan..." : "Simpan keterangan"}</button>
+              </div>,
             ])}
           />
         </Card>
@@ -655,7 +677,7 @@ function SimpleTable({
   rows,
 }: {
   headers: string[];
-  rows: string[][];
+  rows: React.ReactNode[][];
 }) {
   return (
     <div className="overflow-x-auto">
