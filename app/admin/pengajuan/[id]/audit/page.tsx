@@ -260,8 +260,13 @@ export default function AuditWorkspace() {
   async function saveAllGroups() {
     setBusy("all-groups");
     const all = Object.values(drafts).flatMap((group) =>
-      group.items.map((item) => ({ ...item, note: group.comment.trim() })),
+      group.items.filter((item) => item.result).map((item) => ({ ...item, note: group.comment.trim() })),
     );
+    if (!all.length) {
+      setBusy("");
+      alert("Pilih minimal satu hasil audit sebelum menyimpan.");
+      return;
+    }
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 30000);
     let res: Response;
@@ -486,16 +491,7 @@ export default function AuditWorkspace() {
           </div>
           <div className="mt-8 border-t border-[#edf3f1] pt-5">
             <button
-              disabled={
-                busy === "all-groups" ||
-                Object.keys(drafts).length < sjphDisplayGroups.length ||
-                sjphDisplayGroups.some(
-                  ([code]) =>
-                    !drafts[code as string]?.items?.every(
-                      (item) => item.result,
-                    ),
-                )
-              }
+              disabled={busy === "all-groups"}
               onClick={saveAllGroups}
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#08725b] px-5 py-3 text-xs font-bold text-white disabled:opacity-50"
             >
@@ -507,8 +503,7 @@ export default function AuditWorkspace() {
               Simpan Semua Hasil Audit
             </button>
             <p className="mt-2 text-center text-[10px] text-[#71847f]">
-              Simpan satu kali setelah seluruh kriteria pada lima kelompok
-              diperiksa.
+              Simpan hasil yang sudah diisi. Kriteria yang kosong akan dilewati.
             </p>
           </div>
         </Card>
