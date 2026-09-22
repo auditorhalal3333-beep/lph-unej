@@ -97,6 +97,40 @@ function sectionTitle(value: string) {
   return new Paragraph({ spacing: { before: 0, after: 0, line: LINE }, children: [new TextRun({ text: value, font: FONT, size: FONT_SIZE, bold: true })] });
 }
 
+function summaryBox(summaryText: string, auditorHalal: string) {
+  const borders = {
+    top: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+    bottom: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+    left: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+    right: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+    insideHorizontal: { style: BorderStyle.SINGLE, size: 8, color: '000000' },
+    insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+  };
+  return new Table({
+    width: { size: WIDTH, type: WidthType.DXA },
+    columnWidths: [WIDTH],
+    borders,
+    rows: [
+      new TableRow({
+        children: [new TableCell({
+          width: { size: WIDTH, type: WidthType.DXA },
+          shading: { type: ShadingType.CLEAR, fill: 'D9E1E2' },
+          margins: { top: 90, bottom: 90, left: 90, right: 90 },
+          children: [
+            new Paragraph({ spacing: { after: 0, line: LINE }, children: [new TextRun({ text: 'RINGKASAN HASIL PEMERIKSAAN DAN RENCANA TINDAK LANJUT', font: FONT, size: FONT_SIZE, bold: true })] }),
+            new Paragraph({ spacing: { after: 0, line: LINE }, children: [new TextRun({ text: '(disampaikan saat closing meeting)', font: FONT, size: FONT_SIZE, italics: true })] }),
+            new Paragraph({ spacing: { before: 80, after: 0, line: LINE }, children: [new TextRun({ text: 'Auditor Halal:', font: FONT, size: FONT_SIZE, bold: true })] }),
+          ],
+        })],
+      }),
+      new TableRow({
+        cantSplit: true,
+        children: [cell(summaryText || 'Belum diisi oleh auditor.', WIDTH)],
+      }),
+    ],
+  });
+}
+
 function numbered(values: string[]) {
   return values.filter(Boolean).map((value, index) => `${index + 1}) ${value}`).join('\n');
 }
@@ -178,8 +212,7 @@ export function buildAuditReport(application: any) {
   sections.push(new Paragraph({ spacing: { before: 0, after: 0, line: LINE }, children: [new TextRun({ text: '(disampaikan saat closing meeting)', font: FONT, size: FONT_SIZE, italics: true })] }));
   const summary = application.auditSummary;
   const summaryItems = summary?.items || [];
-  sections.push(borderedTable(['Ringkasan:'], [[text(summary?.summaryText || 'Belum diisi oleh auditor.')]], [WIDTH]));
-  sections.push(borderedTable(['Auditor Halal:'], [[text(summary?.auditorHalal || 'Belum diisi oleh auditor.')]], [WIDTH]));
+  sections.push(summaryBox(summary?.summaryText || '', summary?.auditorHalal || ''));
   const findingRows = summaryItems.map((item: any, index: number) => [`${index + 1}. ${text(item.finding)}`, text(item.correction)]);
   sections.push(borderedTable(['Temuan', 'Perbaikan'], findingRows.length ? findingRows : [['Belum ada temuan.', '-']], [4680, 4680]));
   const signatureRows = [[
