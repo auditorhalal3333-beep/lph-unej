@@ -151,6 +151,16 @@ function evidence(response: any) {
 
 const resultLabels: Record<string, string> = { SESUAI: 'Sesuai', PERLU_PERBAIKAN: 'Perlu Perbaikan', TIDAK_SESUAI: 'Tidak Sesuai', TIDAK_BERLAKU: 'Tidak Berlaku' };
 
+function ingredientFinding(item: any) {
+  if (!item.hasSH) return '-';
+  return [
+    item.shNumber ? `SH BPJPH NO. ${item.shNumber}` : 'Nomor SH belum diisi',
+    item.shDate ? `Diterbitkan ${dateText(item.shDate)}` : 'Tanggal terbit belum diisi',
+    item.producer ? `Produsen: ${item.producer}` : '',
+    item.supplier ? `Supplier: ${item.supplier}` : '',
+  ].filter(Boolean).join('\n');
+}
+
 export function buildAuditReport(application: any) {
   const sections: (Paragraph | Table)[] = [];
   const factory = text(application.factoryName || application.companyName);
@@ -189,7 +199,7 @@ export function buildAuditReport(application: any) {
   sections.push(borderedTable(['No.', 'Nama Produk', 'Jenis Produk'], (application.products || []).map((item: any, index: number) => [String(index + 1), text(item.name), text(item.type)]), [650, 4450, 4260]));
   sections.push(...blank(1));
   sections.push(sectionTitle('DAFTAR BAHAN :'));
-  sections.push(borderedTable(['No.', 'Bahan', 'Diragukan', 'Temuan', 'Keterangan'], (application.ingredients || []).map((item: any, index: number) => [String(index + 1), text(item.name), item.hasSH ? '-' : '✓', item.hasSH ? `SH BPJPH NO. ${text(item.shNumber)}` : '-', text(item.notes || 'Belum diisi auditor')]), [650, 2600, 1200, 2400, 2510]));
+  sections.push(borderedTable(['No.', 'Bahan', 'Diragukan', 'Temuan', 'Keterangan'], (application.ingredients || []).map((item: any, index: number) => [String(index + 1), text(item.name), item.hasSH ? '✓' : '-', ingredientFinding(item), text(item.notes || 'Belum diisi auditor')]), [650, 2600, 1200, 2400, 2510]));
 
   sections.push(new Paragraph({ children: [new PageBreak()] }));
   sections.push(centered('IMPLEMENTASI SJPH'));

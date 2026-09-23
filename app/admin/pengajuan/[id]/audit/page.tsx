@@ -88,7 +88,6 @@ export default function AuditWorkspace() {
   const [summary, setSummary] = useState({ summaryText: "", auditorHalal: "", items: [{ finding: "", correction: "" }] });
   const [summaryMessage, setSummaryMessage] = useState("");
   const [ingredientNotes, setIngredientNotes] = useState<Record<string, string>>({});
-  const [ingredientNoteBusy, setIngredientNoteBusy] = useState("");
   const [categories, setCategories] = useState<any[]>([]);
   const [drafts, setDrafts] = useState<
     Record<
@@ -274,21 +273,29 @@ export default function AuditWorkspace() {
     }
     setBusy("");
   }
-  async function saveIngredientNote(ingredientId: string) {
-    setIngredientNoteBusy(ingredientId);
-    const res = await fetch(`/api/ingredients/${ingredientId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notes: ingredientNotes[ingredientId] || "" }),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setApp((prev) => prev ? { ...prev, ingredients: prev.ingredients.map((item) => item.id === ingredientId ? { ...item, notes: updated.notes } : item) } : prev);
-    } else {
-      const error = await res.json();
-      alert(error.error || "Keterangan auditor gagal disimpan.");
+  async function saveAllIngredientNotes() {
+    setBusy("ingredient-notes");
+    try {
+      const res = await fetch("/api/ingredients", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pengajuanId: id, notes: ingredientNotes }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Keterangan auditor gagal disimpan.");
+        return;
+      }
+      setApp((prev) => prev ? {
+        ...prev,
+        ingredients: prev.ingredients.map((item) => ({
+          ...item,
+          notes: ingredientNotes[item.id] || null,
+        })),
+      } : prev);
+    } finally {
+      setBusy("");
     }
-    setIngredientNoteBusy("");
   }
   async function saveSummary() {
     setBusy("summary");
@@ -521,14 +528,21 @@ export default function AuditWorkspace() {
             rows={app.ingredients.map((m, i) => [
               String(i + 1),
               m.name,
-              m.hasSH ? "-" : "✓",
-              m.hasSH ? `SH BPJPH NO. ${m.shNumber || "-"}` : "-",
-              <div key={m.id} className="min-w-[240px] space-y-2">
-                <textarea value={ingredientNotes[m.id] || ""} onChange={(e) => setIngredientNotes((prev) => ({ ...prev, [m.id]: e.target.value }))} rows={2} placeholder="Keterangan auditor" className="w-full rounded-lg border border-[#dce9e5] px-2 py-2 text-xs outline-none focus:border-[#0a8065]" />
-                <button type="button" onClick={() => saveIngredientNote(m.id)} disabled={ingredientNoteBusy === m.id} className="rounded-lg bg-[#08725b] px-3 py-1.5 text-[10px] font-bold text-white disabled:opacity-50">{ingredientNoteBusy === m.id ? "Menyimpan..." : "Simpan keterangan"}</button>
-              </div>,
+              m.hasSH ? "✓" : "-",
+              m.hasSH ? [
+                m.shNumber ? `SH BPJPH NO. ${m.shNumber}` : "Nomor SH belum diisi",
+                m.shDate ? `Diterbitkan ${new Date(m.shDate).toLocaleDateString("id-ID")}` : "Tanggal terbit belum diisi",
+                m.producer ? `Produsen: ${m.producer}` : "",
+                m.supplier ? `Supplier: ${m.supplier}` : "",
+              ].filter(Boolean).join("\n") : "-",
+              <textarea key={m.id} value={ingredientNotes[m.id] || ""} onChange={(e) => setIngredientNotes((prev) => ({ ...prev, [m.id]: e.target.value }))} rows={2} placeholder="Keterangan auditor" className="min-w-[240px] w-full rounded-lg border border-[#dce9e5] px-2 py-2 text-xs outline-none focus:border-[#0a8065]" />,
             ])}
           />
+          <div className="mt-5 border-t border-[#edf3f1] pt-4">
+            <button type="button" onClick={saveAllIngredientNotes} disabled={busy === "ingredient-notes"} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#08725b] px-5 py-3 text-xs font-bold text-white disabled:opacity-50">
+              {busy === "ingredient-notes" ? "Menyimpan..." : "Simpan semua keterangan"}
+            </button>
+          </div>
         </Card>
       )}{" "}
       {tab === "sjph" && (
