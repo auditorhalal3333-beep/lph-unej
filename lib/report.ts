@@ -2,6 +2,7 @@ import {
   AlignmentType,
   BorderStyle,
   Document,
+  ExternalHyperlink,
   PageBreak,
   Paragraph,
   ShadingType,
@@ -17,15 +18,41 @@ const WIDTH = 9360;
 const FONT = 'Cambria';
 const FONT_SIZE = 24; // 12 pt in OOXML half-points
 const LINE = 276; // 1.15 line spacing
+const LINK_COLOR = '0563C1';
 const text = (value: unknown) => String(value ?? '').trim() || '-';
 const dateText = (value: unknown) => value ? new Date(String(value)).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
+const isUrl = (value: string) =>
+  /^(https?:\/\/|www\.)\S+$/i.test(value) ||
+  /^[\w-]+(\.[\w-]+)+\/\S*$/i.test(value);
+const href = (value: string) => (/^https?:\/\//i.test(value) ? value : `https://${value}`);
 
 function line(value: unknown, bold = false, size = FONT_SIZE) {
   return new Paragraph({ spacing: { after: 0, line: LINE }, children: [new TextRun({ text: text(value), font: FONT, size, bold })] });
 }
 
+function linkLine(value: string) {
+  const label = value.startsWith('link: ') ? 'link: ' : '';
+  const url = label ? value.slice(label.length).trim() : value;
+  if (!isUrl(url)) return line(value);
+  return new Paragraph({
+    spacing: { after: 0, line: LINE },
+    children: [
+      ...(label ? [new TextRun({ text: label, font: FONT, size: FONT_SIZE })] : []),
+      new ExternalHyperlink({
+        link: href(url),
+        children: [new TextRun({ text: url, font: FONT, size: FONT_SIZE, color: LINK_COLOR, underline: {} })],
+      }),
+    ],
+  });
+}
+
 function multiline(value: unknown, bold = false) {
-  return String(value || '-').split('\n').map((item) => line(item, bold));
+  return String(value || '-').split('\n').map((item) => {
+    const trimmed = item.trim();
+    if (!trimmed) return new Paragraph({ spacing: { after: 0, line: LINE }, children: [new TextRun({ text: '', font: FONT, size: FONT_SIZE })] });
+    const candidate = trimmed.startsWith('link: ') ? trimmed.slice(6).trim() : trimmed;
+    return isUrl(candidate) ? linkLine(trimmed) : line(trimmed, bold);
+  });
 }
 
 function cell(value: unknown, width: number, bold = false, shade?: string) {
@@ -131,10 +158,6 @@ function summaryBox(summaryText: string, auditorHalal: string) {
   });
 }
 
-function numbered(values: string[]) {
-  return values.filter(Boolean).map((value, index) => `${index + 1}) ${value}`).join('\n');
-}
-
 function officialNames(application: any) {
   const officials = application.officials?.length ? application.officials : [{ name: application.companyOfficialName || application.ownerName || '-', title: null }];
   return officials.map((item: any, index: number) => `${index + 1}. ${text(item.name)}${item.title ? ` (${item.title})` : ''}`).join('\n');
@@ -143,13 +166,6 @@ function officialNames(application: any) {
 function auditorNames(application: any) {
   return application.assignments?.length ? application.assignments.map((item: any, index: number) => `${index + 1}. ${text(item.auditorName || item.auditor?.name)}${item.auditorTitle ? `, ${item.auditorTitle}` : ''}`).join('\n') : '-';
 }
-
-function evidence(response: any) {
-  const values = [response?.providerNotes, ...(response?.evidences || []).map((item: any) => item.url || item.fileName)].filter(Boolean);
-  return values.length ? values.join('\n') : 'Belum diisi oleh penyelia';
-}
-
-const resultLabels: Record<string, string> = { SESUAI: 'Sesuai', PERLU_PERBAIKAN: 'Perlu Perbaikan', TIDAK_SESUAI: 'Tidak Sesuai', TIDAK_BERLAKU: 'Tidak Berlaku' };
 
 function ingredientFinding(item: any) {
   if (!item.hasSH) return '-';
@@ -210,12 +226,20 @@ export function buildAuditReport(application: any) {
     const criteria = (category.criteria || []).map((criterion: any) => ({ ...criterion, response: responses.find((item: any) => item.criterionId === criterion.id) }));
     const actual = criteria.length ? criteria : categoryResponses.map((item: any) => ({ ...item.criterion, response: item }));
     const categoryTitle = text(category.name || category.code);
-    const criteriaText = numbered(actual.map((item: any) => item.title));
-    const auditText = actual.map((item: any, index: number) => { const result = results.find((audit: any) => audit.section === category.code && audit.criterion === item.title); const response = item.response; return `${index + 1}) ${resultLabels[result?.result || response?.auditorResult] || 'Belum diperiksa'}${result?.note || response?.auditorNotes ? ` — ${result?.note || response?.auditorNotes}` : ''}`; }).join('\n');
-    const evidenceText = numbered(actual.map((item: any) => `${item.title}: ${evidence(item.response)}`));
-    return [categoryTitle, criteriaText || 'Belum ada kriteria', auditText || 'Belum diperiksa', evidenceText || 'Belum diisi oleh penyelia'];
+    const categoryResults = results.filter((audit: any) =>
+      (audit.section === category.code || audit.section === 'SJPH') &&
+      actual.some((item: any) => item.title === audit.criterion),
+    );
+    const groupComment = categoryResults.map((audit: any) => String(audit.note || '').trim()).find(Boolean) || '';
+    const evidenceText = actual.map((item: any, index: number) => {
+      const notes = String(item.response?.providerNotes || '').trim();
+      const links = (item.response?.evidences || []).map((link: any) => link.url || link.fileName).filter(Boolean);
+      const details = [...(notes ? [notes] : []), ...links.map((value: any) => `link: ${value}`)];
+      return `${index + 1}. ${text(item.title)}\n\n${details.join('\n') || '-'}`;
+    }).join('\n\n');
+    return [categoryTitle, groupComment || '-', evidenceText || '-'];
   });
-  sections.push(borderedTable(['Kriteria', 'Hasil Audit', 'Bukti/keterangan'], sjphRows.map((row: string[]) => [row[0], `${row[1]}\n\n${row[2]}`, row[3]]), [2700, 3200, 3460]));
+  sections.push(borderedTable(['Kriteria', 'Hasil Audit', 'Bukti/keterangan'], sjphRows, [2700, 3200, 3460]));
 
   sections.push(new Paragraph({ children: [new PageBreak()] }));
   const summary = application.auditSummary;
