@@ -235,8 +235,8 @@ export function buildAuditReport(application: any) {
       const notes = String(item.response?.providerNotes || '').trim();
       const links = (item.response?.evidences || []).map((link: any) => link.url || link.fileName).filter(Boolean);
       const details = [...(notes ? [notes] : []), ...links.map((value: any) => `link: ${value}`)];
-      return `${index + 1}. ${text(item.title)}\n\n${details.join('\n') || '-'}`;
-    }).join('\n\n');
+      return `${index + 1}. ${text(item.title)}\n${details.join('\n') || '-'}`;
+    }).join('\n');
     return [categoryTitle, groupComment || '-', evidenceText || '-'];
   });
   sections.push(borderedTable(['Kriteria', 'Hasil Audit', 'Bukti/keterangan'], sjphRows, [2700, 3200, 3460]));
