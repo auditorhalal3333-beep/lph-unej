@@ -157,3 +157,85 @@ export async function PUT(
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
+
+const DELETABLE_BY_OWNER = ["DRAFT", "DIAJUKAN"];
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const user = await getCurrentUser();
+  if (!user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  const pengajuan = await prisma.pengajuan.findUnique({
+    where: { id },
+    select: { id: true, userId: true, status: true, companyName: true },
+  });
+  if (!pengajuan)
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const isOwner = user.role === "PENYELIA" && pengajuan.userId === user.id;
+  const isAdmin = ["ADMIN", "SUPER_ADMIN"].includes(user.role);
+
+  if (!isOwner && !isAdmin)
+    return NextResponse.json(
+      { error: "Anda tidak dapat menghapus pengajuan ini." },
+      { status: 403 },
+    );
+
+  if (isOwner && !DELETABLE_BY_OWNER.includes(pengajuan.status))
+    return NextResponse.json(
+      {
+        error:
+          "Pengajuan yang sudah masuk proses audit hanya dapat dihapus oleh admin.",
+      },
+      { status: 403 },
+    );
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.productMaterial.deleteMany({
+        where: { product: { pengajuanId: id } },
+      });
+      await tx.productMaterial.deleteMany({
+        where: { ingredient: { pengajuanId: id } },
+      });
+      await tx.evidence.deleteMany({ where: { pengajuanId: id } });
+      await tx.sjphItem.deleteMany({
+        where: { section: { pengajuanId: id } },
+      });
+      await tx.sjphSection.deleteMany({ where: { pengajuanId: id } });
+      await tx.temuanFix.deleteMany({
+        where: { temuan: { pengajuanId: id } },
+      });
+      await tx.findingVerification.deleteMany({
+        where: { finding: { pengajuanId: id } },
+      });
+      await tx.temuan.deleteMany({ where: { pengajuanId: id } });
+      await tx.product.deleteMany({ where: { pengajuanId: id } });
+      await tx.ingredient.deleteMany({ where: { pengajuanId: id } });
+      await tx.sjphResponse.deleteMany({ where: { pengajuanId: id } });
+      await tx.auditAssignment.deleteMany({ where: { pengajuanId: id } });
+      await tx.auditResult.deleteMany({ where: { pengajuanId: id } });
+      await tx.auditLog.deleteMany({ where: { pengajuanId: id } });
+      await tx.report.deleteMany({ where: { pengajuanId: id } });
+      await tx.notification.deleteMany({ where: { pengajuanId: id } });
+      await tx.auditSummaryItem.deleteMany({
+        where: { summary: { pengajuanId: id } },
+      });
+      await tx.auditSummary.deleteMany({ where: { pengajuanId: id } });
+      await tx.pengajuanOfficial.deleteMany({ where: { pengajuanId: id } });
+      await tx.pengajuan.delete({ where: { id } });
+    });
+
+    return NextResponse.json({ deleted: true, name: pengajuan.companyName });
+  } catch (error) {
+    console.error("DELETE /api/pengajuan/[id]", error);
+    return NextResponse.json(
+      { error: "Pengajuan gagal dihapus. Data terkait mungkin masih dipakai." },
+      { status: 400 },
+    );
+  }
+}
